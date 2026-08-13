@@ -1,0 +1,4 @@
+psutil>=5.9
+rich>=13.0
+distro>=1.8
+pytest>=7.0

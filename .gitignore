@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtualenv
+.venv/
+env/
+venv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# PyInstaller
+*.spec
+
+# VSCode
+.vscode/
+
+# macOS
+.DS_Store
+
+# logs
+*.log
+
+# pytest cache
+.pytest_cache/
+
+# coverage
+htmlcov/
+.coverage
