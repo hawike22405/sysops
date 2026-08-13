@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sysops"
+version = "0.1.0"
+description = "Terminal-first system information reporter (prototype)"
+authors = [
+  {name = "hawike22405"}
+]
+license = {text = "MIT"}
+
+[tool.black]
+line-length = 88
