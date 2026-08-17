@@ -13,3 +13,6 @@ license = {text = "MIT"}
 
 [tool.black]
 line-length = 88
+
+[project.scripts]
+sysops = "sysops.cli:main"
