@@ -11,5 +11,11 @@ authors = [
 ]
 license = {text = "MIT"}
 
+[project.scripts]
+sysops = "sysops.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.black]
 line-length = 88
