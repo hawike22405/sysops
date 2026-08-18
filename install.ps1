@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 
 $RepoUrl    = "https://github.com/hawike22405/sysops.git"
 $InstallDir = if ($env:SYSOPS_INSTALL_DIR) { $env:SYSOPS_INSTALL_DIR } else { Join-Path $env:USERPROFILE ".local\share\sysops" }
-$BinDir     = if ($env:SYSOPS_BIN_DIR)     { $env:SYSOPS_BIN_DIR }     else { Join-Path $env:USERPROFILE ".local\bin" }
+$BinDir     = if ($env:SYSOPS_BIN_DIR) { $env:SYSOPS_BIN_DIR } else { Join-Path $env:USERPROFILE ".local\bin" }
 $VenvDir    = Join-Path $InstallDir ".venv"
 $SrcDir     = Join-Path $InstallDir "src-checkout"
 
@@ -49,11 +49,14 @@ New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 if (Test-Path (Join-Path $SrcDir ".git")) {
     Info "Updating existing sysops source"
     git -C $SrcDir fetch --depth 1 origin main
+    if ($LASTEXITCODE -ne 0) { throw "Failed to fetch latest sysops source" }
     git -C $SrcDir reset --hard origin/main
+    if ($LASTEXITCODE -ne 0) { throw "Failed to reset source to origin/main" }
 } else {
     Info "Cloning latest sysops source"
     if (Test-Path $SrcDir) { Remove-Item -Recurse -Force $SrcDir }
     git clone --depth 1 --branch main $RepoUrl $SrcDir
+    if ($LASTEXITCODE -ne 0) { throw "Failed to clone sysops repository" }
 }
 
 if (-not (Test-Path (Join-Path $SrcDir "src\sysops\cli.py"))) {
@@ -92,7 +95,10 @@ if ($LASTEXITCODE -ne 0 -or $asciiCheck.Trim() -ne "True") {
 }
 
 $shimPath = Join-Path $BinDir "sysops.cmd"
-$shimContent = '@echo off' + "`r`n" + '"' + $venvExe + '" %*' + "`r`n"
+$shimContent = @"
+@echo off
+"$venvExe" %*
+"@.Trim() + "`r`n"
 Set-Content -Path $shimPath -Value $shimContent -Encoding ASCII -Force
 
 $stalePs1 = Join-Path $BinDir "sysops.ps1"
