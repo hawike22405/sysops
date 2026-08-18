@@ -7,6 +7,7 @@ A modern, terminal-first system information reporter (prototype).
 - Pretty terminal output (Rich)
 - JSON output for automation
 - Modular probes: OS, CPU, memory, disks, network, GPU, sensors
+- ASCII-art image rendering
 - No privileged operations by default
 
 ## Installation
@@ -27,8 +28,6 @@ irm https://raw.githubusercontent.com/hawike22405/sysops/main/install.ps1 | iex
 Both installers do the same thing: check for Python 3, clone the repo (or use a local
 checkout), create an isolated virtual environment, install `sysops` into it, and expose
 a `sysops` command on your `PATH`.
-
-```
 
 After installation:
 
@@ -78,6 +77,62 @@ sysops --detail full
 sysops --format json
 sysops --format compact
 sysops --no-root
+```
+
+## ASCII Art
+
+You can turn any supported image into ASCII art directly from the terminal.
+
+### 1. Upload or copy an image
+
+Place your image anywhere you can access from the terminal, for example:
+
+```text
+Downloads/my-image.png
+```
+
+The ASCII-art command supports common image formats handled by Pillow, including PNG, JPG, BMP, GIF, and WEBP.
+
+### 2. Run the ASCII command
+
+Pass the image path to `sysops ascii`:
+
+```bash
+sysops ascii Downloads/my-image.png
+```
+
+The command converts the image to grayscale and prints the ASCII version in your terminal.
+
+### 3. Change the output width
+
+Use `--width` to control how wide the ASCII art is:
+
+```bash
+sysops ascii Downloads/my-image.png --width 120
+```
+
+A larger width gives more detail but uses more terminal space.
+
+### 4. Invert the brightness
+
+Use `--invert` to reverse the character brightness ramp:
+
+```bash
+sysops ascii Downloads/my-image.png --invert
+```
+
+You can combine both options:
+
+```bash
+sysops ascii Downloads/my-image.png --width 120 --invert
+```
+
+### 5. Show the built-in OS logo
+
+You do not need to provide an image. Running the command without a path displays the built-in logo for the detected operating system:
+
+```bash
+sysops ascii
 ```
 
 See `docs/DESIGN.md` for design notes and roadmap.
