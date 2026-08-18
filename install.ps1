@@ -92,7 +92,7 @@ if ($LASTEXITCODE -ne 0 -or $asciiCheck.Trim() -ne "True") {
 }
 
 $shimPath = Join-Path $BinDir "sysops.cmd"
-$shimContent = "@echo off`r`n\"$venvExe\" %*`r`n"
+$shimContent = '@echo off' + "`r`n" + '"' + $venvExe + '" %*' + "`r`n"
 Set-Content -Path $shimPath -Value $shimContent -Encoding ASCII -Force
 
 $stalePs1 = Join-Path $BinDir "sysops.ps1"
