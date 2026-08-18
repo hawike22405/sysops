@@ -1,5 +1,5 @@
-import json
-from src.sysops import probes
+from sysops import probes
+
 
 def test_collect_all_keys():
     data = probes.collect_all()
