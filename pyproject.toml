@@ -11,6 +11,11 @@ authors = [
 ]
 license = {text = "MIT"}
 
+# Dependencies required when installing the package
+dependencies = [
+  "Pillow>=10.0",
+]
+
 [project.scripts]
 sysops = "sysops.cli:main"
 
