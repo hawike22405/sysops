@@ -25,12 +25,7 @@ except ImportError as exc:  # pragma: no cover
         "The 'ascii art' feature requires Pillow. Install it with: pip install Pillow"
     ) from exc
 
-# Characters ordered from darkest to lightest. Longer ramps give smoother
-# gradients; this one is a common, readable choice.
 _RAMP = "@%#*+=-:. "
-
-# Terminal character cells are roughly twice as tall as they are wide, so we
-# compress vertically to keep the aspect ratio looking correct.
 _CHAR_ASPECT_CORRECTION = 0.55
 
 
@@ -44,13 +39,12 @@ def _load_image(image_path: str) -> "Image.Image":
         raise UnsupportedImageError(f"No such image file: {path}")
     try:
         return Image.open(path)
-    except Exception as exc:  # Pillow raises various error types
+    except Exception as exc:
         raise UnsupportedImageError(f"Could not read '{path}' as an image: {exc}") from exc
 
 
 def _image_to_ascii(image: "Image.Image", width: int, invert: bool) -> str:
-    image = image.convert("L")  # grayscale
-
+    image = image.convert("L")
     orig_w, orig_h = image.size
     height = max(1, int((orig_h / orig_w) * width * _CHAR_ASPECT_CORRECTION))
     image = image.resize((width, height))
@@ -79,12 +73,10 @@ def render_ascii(
     width: int = 80,
     invert: bool = False,
 ) -> str:
-    """
-    Return an ASCII-art rendering of `image_path`.
+    """Return an ASCII-art rendering of `image_path`."""
+    if width <= 0:
+        raise ValueError("width must be greater than 0")
 
-    If `image_path` is None, returns a built-in ASCII logo for the current OS
-    (Linux, Darwin/macOS, Windows) instead of converting an image.
-    """
     if image_path is None:
         return _default_os_logo()
 
@@ -100,11 +92,6 @@ def print_ascii(
     """Convenience wrapper that prints the result of render_ascii()."""
     print(render_ascii(image_path=image_path, width=width, invert=invert))
 
-
-# --------------------------------------------------------------------------
-# Built-in fallback logos (simple, generic silhouettes — not reproductions
-# of any trademarked logo artwork).
-# --------------------------------------------------------------------------
 
 _OS_LOGOS = {
     "Linux": r"""
@@ -132,7 +119,7 @@ _OS_LOGOS = {
     ██╔══██╗██╔══██╗
     ██████╔╝██████╔╝
     ██╔══██╗██╔══██╗
-    ██████╔╝██████╔/
+    ██████╔╝██████╔╗
     ╚═════╝ ╚═════╝
      WINDOWS
 """.strip("\n"),
