@@ -11,12 +11,23 @@ A modern, terminal-first system information reporter (prototype).
 
 ## Installation
 
-### Recommended: one-line installer
-
-Install `sysops` globally so you can run it from any terminal, similar to `fastfetch`:
-
+### Linux / macOS / WSL / Git Bash
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hawike22405/sysops/main/install.sh | bash
+```
+
+### Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/hawike22405/sysops/main/install.ps1 | iex
+```
+> Requires Python 3 and Git for Windows to be installed and on `PATH`.
+> If PowerShell blocks the script due to execution policy, run once:
+> `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, then retry the command above.
+
+Both installers do the same thing: check for Python 3, clone the repo (or use a local
+checkout), create an isolated virtual environment, install `sysops` into it, and expose
+a `sysops` command on your `PATH`.
+
 ```
 
 After installation:
