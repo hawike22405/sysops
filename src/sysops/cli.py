@@ -3,6 +3,24 @@ import json
 from pathlib import Path
 from .probes import collect_all
 from .output import render_pretty, render_json
+from .ascii_art import render_ascii, UnsupportedImageError
+
+
+def add_ascii_subcommand(subparsers):
+    p = subparsers.add_parser("ascii", help="Render an image as ASCII art")
+    p.add_argument("image", nargs="?", default=None,
+                   help="Path to an image file. If omitted, shows your OS logo.")
+    p.add_argument("--width", type=int, default=80, help="Output width in characters")
+    p.add_argument("--invert", action="store_true", help="Invert the brightness ramp")
+    p.set_defaults(func=_run_ascii)
+
+
+def _run_ascii(args):
+    try:
+        print(render_ascii(args.image, width=args.width, invert=args.invert))
+    except (UnsupportedImageError, ValueError) as e:
+        print(f"Error: {e}")
+        raise SystemExit(1)
 
 
 def build_parser():
@@ -13,12 +31,18 @@ def build_parser():
     p.add_argument("--modules", help="comma-separated modules to run (default: all)")
     p.add_argument("--watch", type=int, help="repeat every N seconds")
     p.add_argument("--no-root", action="store_true", help="do not attempt privileged probes")
+    subparsers = p.add_subparsers(dest="command")
+    add_ascii_subcommand(subparsers)
     return p
 
 
 def main():
     parser = build_parser()
     args = parser.parse_args()
+
+    if getattr(args, "command", None) == "ascii":
+        args.func(args)
+        return
 
     modules = None
     if args.modules:
