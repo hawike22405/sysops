@@ -24,49 +24,34 @@ def _safe(fun, default=None):
 
 def get_os_info() -> Dict[str, Any]:
     info = {}
-    system = platform.system()
+    if platform.system() == "Windows":
+        info["name"] = f"Windows {platform.release()}"
+        info["id"] = "windows"
+        info["version"] = platform.version()
+        info["platform"] = platform.system()
+        info["platform_release"] = platform.release()
+        return info
 
-    # Linux: prefer the distro package if available, otherwise /etc/os-release
-    if system == "Linux":
-        if _distro:
-            info["name"] = _distro.name(pretty=True)
-            info["id"] = _distro.id()
-            info["version"] = _distro.version(best=True)
-        else:
-            if os.path.exists("/etc/os-release"):
-                try:
-                    data = {}
-                    with open("/etc/os-release", "r", encoding="utf-8") as f:
-                        for line in f:
-                            if "=" in line:
-                                k, v = line.strip().split("=", 1)
-                                data[k] = v.strip().strip('"')
-                    info["pretty_name"] = data.get("PRETTY_NAME")
-                    info["id"] = data.get("ID")
-                    info["version"] = data.get("VERSION")
-                except Exception:
-                    pass
-
-    # Windows: use platform.win32_ver and platform APIs
-    elif system == "Windows":
-        try:
-            win_ver = platform.win32_ver()
-            # win_ver is a tuple (release, version, csd, ptype)
-            info["name"] = "Windows"
-            info["release"] = win_ver[0] or platform.release()
-            info["version"] = win_ver[1] or platform.version()
-        except Exception:
-            info.setdefault("platform", system)
-            info.setdefault("platform_release", platform.release())
-
-    # macOS or other platforms: fall back to generic platform info
+    if _distro:
+        info["name"] = _distro.name(pretty=True)
+        info["id"] = _distro.id()
+        info["version"] = _distro.version(best=True)
     else:
-        info.setdefault("platform", system)
+        if os.path.exists("/etc/os-release"):
+            try:
+                data = {}
+                with open("/etc/os-release", "r", encoding="utf-8") as f:
+                    for line in f:
+                        if "=" in line:
+                            k, v = line.strip().split("=", 1)
+                            data[k] = v.strip().strip('"')
+                info["pretty_name"] = data.get("PRETTY_NAME")
+                info["id"] = data.get("ID")
+                info["version"] = data.get("VERSION")
+            except Exception:
+                pass
+        info.setdefault("platform", platform.system())
         info.setdefault("platform_release", platform.release())
-
-    # Always include a generic platform field as well
-    info.setdefault("platform", system)
-    info.setdefault("platform_release", platform.release())
     return info
 
 def get_kernel_and_host() -> Dict[str, Any]:
@@ -80,7 +65,6 @@ def get_kernel_and_host() -> Dict[str, Any]:
     }
 
 def get_uptime() -> Dict[str, Any]:
-    # Prefer /proc/uptime on Linux
     try:
         if os.path.exists("/proc/uptime"):
             with open("/proc/uptime", "r", encoding="utf-8") as f:
@@ -88,22 +72,22 @@ def get_uptime() -> Dict[str, Any]:
             return {"uptime_seconds": int(s)}
     except Exception:
         pass
-
-    # Fallback to psutil where available (works on Windows, macOS, Linux)
     try:
-        if psutil:
-            return {"uptime_seconds": int(time.time() - psutil.boot_time())}
+        return {"uptime_seconds": int(time.time() - psutil.boot_time())}
     except Exception:
-        pass
-
-    # Last resort: None
-    return {"uptime_seconds": None}
+        return {"uptime_seconds": None}
 
 def get_cpu_info() -> Dict[str, Any]:
     info = {}
-
-    # Try Linux /proc/cpuinfo first
-    if os.path.exists("/proc/cpuinfo"):
+    if platform.system() == "Windows":
+        try:
+            import winreg
+            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
+            model = winreg.QueryValueEx(key, "ProcessorNameString")[0]
+            info["model"] = model.strip()
+        except Exception:
+            info["model"] = platform.processor()
+    elif os.path.exists("/proc/cpuinfo"):
         try:
             model = None
             flags = None
@@ -117,32 +101,15 @@ def get_cpu_info() -> Dict[str, Any]:
             info["flags"] = flags.split() if flags else None
         except Exception:
             pass
-
-    # If /proc/cpuinfo isn't present (Windows/macOS), try platform for basic info
-    if not info.get("model"):
-        try:
-            proc = platform.processor()
-            if not proc:
-                # platform.processor() can be empty on some systems; try uname
-                proc = platform.uname().processor
-            info["model"] = proc or platform.machine()
-        except Exception:
-            info["model"] = None
-
-    # Use psutil for core counts and frequency when available
     if psutil:
-        try:
-            info["logical_cores"] = psutil.cpu_count(logical=True)
-            info["physical_cores"] = psutil.cpu_count(logical=False)
-        except Exception:
-            pass
+        info["logical_cores"] = psutil.cpu_count(logical=True)
+        info["physical_cores"] = psutil.cpu_count(logical=False)
         try:
             freq = psutil.cpu_freq()
             if freq:
                 info["freq_mhz"] = round(freq.current, 2)
         except Exception:
             pass
-
     return info
 
 def get_memory_info() -> Dict[str, Any]:

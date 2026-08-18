@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sysops"
-version = "0.1.2"
+version = "0.1.3"
 description = "Terminal-first system information reporter (prototype)"
 authors = [
   {name = "hawike22405"}
