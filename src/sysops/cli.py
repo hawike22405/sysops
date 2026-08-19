@@ -1,6 +1,10 @@
 import argparse
 import json
 from pathlib import Path
+
+from .ascii_art import UnsupportedImageError, render_ascii
+from .config import config_path, load_config, save_config
+from .output import render_json, render_pretty
 from .probes import collect_all
 from .output import render_pretty, render_json
 from .ascii_art import render_ascii, UnsupportedImageError
@@ -9,19 +13,114 @@ from .dino import run_game
 
 def add_ascii_subcommand(subparsers):
     p = subparsers.add_parser("ascii", help="Render an image as ASCII art")
-    p.add_argument("image", nargs="?", default=None,
-                   help="Path to an image file. If omitted, shows your OS logo.")
+    p.add_argument(
+        "image", nargs="?", default=None,
+        help="Path to an image file. If omitted, shows your OS logo.",
+    )
     p.add_argument("--width", type=int, default=80, help="Output width in characters")
-    p.add_argument("--invert", action="store_true", help="Invert the brightness ramp")
+    p.add_argument(
+        "--invert", action="store_true",
+        help="Invert the brightness ramp (plain-text mode only)",
+    )
+    color_group = p.add_mutually_exclusive_group()
+    color_group.add_argument(
+        "--color", dest="color", action="store_true", default=None,
+        help="Force 24-bit ANSI color rendering (like neofetch/fastfetch)",
+    )
+    color_group.add_argument(
+        "--no-color", dest="color", action="store_false",
+        help="Force plain grayscale character-ramp rendering",
+    )
     p.set_defaults(func=_run_ascii)
 
 
 def _run_ascii(args):
     try:
-        print(render_ascii(args.image, width=args.width, invert=args.invert))
-    except (UnsupportedImageError, ValueError) as e:
-        print(f"Error: {e}")
+        print(render_ascii(args.image, width=args.width, invert=args.invert, color=args.color))
+    except (UnsupportedImageError, ValueError) as exc:
+        print(f"Error: {exc}")
         raise SystemExit(1)
+
+
+def add_logo_subcommand(subparsers):
+    p = subparsers.add_parser(
+        "logo", help="Manage the default logo shown beside `sysops`"
+    )
+    logo_sub = p.add_subparsers(dest="logo_command")
+
+    set_p = logo_sub.add_parser("set", help="Save an image as your default logo")
+    set_p.add_argument("image", help="Path to an image file to use as your default logo")
+    set_p.add_argument("--width", type=int, help="Default logo width in characters (default: 28)")
+    color_group = set_p.add_mutually_exclusive_group()
+    color_group.add_argument(
+        "--color", dest="color", action="store_true", default=None,
+        help="Always render this logo in 24-bit ANSI color",
+    )
+    color_group.add_argument(
+        "--no-color", dest="color", action="store_false",
+        help="Always render this logo in plain grayscale",
+    )
+    set_p.set_defaults(func=_run_logo_set)
+
+    clear_p = logo_sub.add_parser("clear", help="Remove the saved logo and revert to the built-in OS logo")
+    clear_p.set_defaults(func=_run_logo_clear)
+
+    show_p = logo_sub.add_parser("show", help="Show the currently saved logo settings")
+    show_p.set_defaults(func=_run_logo_show)
+
+
+def _run_logo_set(args):
+    path = Path(args.image).expanduser()
+    if not path.is_file():
+        print(f"Error: No such image file: {path}")
+        raise SystemExit(1)
+    try:
+        render_ascii(str(path), width=4)
+    except (UnsupportedImageError, ValueError) as exc:
+        print(f"Error: {exc}")
+        raise SystemExit(1)
+
+    if args.width is not None and args.width <= 0:
+        print("Error: width must be greater than 0")
+        raise SystemExit(1)
+
+    cfg = load_config()
+    cfg["image"] = str(path.resolve())
+    if args.width is not None:
+        cfg["width"] = args.width
+    if args.color is not None:
+        cfg["color"] = args.color
+    save_config(cfg)
+
+    print(f"Saved default logo: {cfg['image']}")
+    if "width" in cfg:
+        print(f"  width: {cfg['width']}")
+    if "color" in cfg:
+        print(f"  color: {cfg['color']}")
+    print("Run 'sysops' to see it, or 'sysops logo clear' to revert to the OS logo.")
+
+
+def _run_logo_clear(args):
+    cfg = load_config()
+    if not cfg.get("image"):
+        print("No custom logo is set.")
+        return
+    cfg.pop("image", None)
+    cfg.pop("width", None)
+    cfg.pop("color", None)
+    save_config(cfg)
+    print("Cleared custom logo. 'sysops' will show the built-in OS logo again.")
+
+
+def _run_logo_show(args):
+    cfg = load_config()
+    if not cfg.get("image"):
+        print(f"No custom logo set (using built-in OS logo).\nConfig file: {config_path()}")
+        return
+    print(f"Image: {cfg['image']}")
+    print(f"Width: {cfg.get('width', 28)} (default: 28)")
+    print(f"Color: {cfg.get('color', 'auto')}")
+    print(f"Config file: {config_path()}")
 
 
 def add_play_subcommand(subparsers):
@@ -56,17 +155,37 @@ def main():
         args.func(args)
         return
 
+    if getattr(args, "command", None) == "logo":
+        if getattr(args, "func", None):
+            args.func(args)
+        else:
+            parser.parse_args(["logo", "--help"])
+        return
+
     modules = None
     if args.modules:
         modules = [m.strip() for m in args.modules.split(",") if m.strip()]
 
     data = collect_all(detail=args.detail, modules=modules, no_root=args.no_root)
 
+    def build_logo():
+        if args.no_logo:
+            return None
+        cfg = load_config()
+        image = args.image if args.image is not None else cfg.get("image")
+        width = args.logo_width if args.logo_width is not None else cfg.get("width", 28)
+        color = args.logo_color if args.logo_color is not None else cfg.get("color")
+        try:
+            return render_ascii(image, width=width, color=color)
+        except (UnsupportedImageError, ValueError) as exc:
+            print(f"Warning: couldn't render logo: {exc}")
+            return None
+
     out_text = None
     if args.format == "pretty":
-        render_pretty(data, detail=args.detail)
+        render_pretty(data, detail=args.detail, logo=build_logo())
     elif args.format == "compact":
-        render_pretty(data, detail="brief")
+        render_pretty(data, detail="brief", logo=build_logo())
     else:
         out_text = render_json(data)
         print(out_text)
