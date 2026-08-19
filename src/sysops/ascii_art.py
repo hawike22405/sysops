@@ -29,7 +29,7 @@ except ImportError as exc:  # pragma: no cover
 _RAMP = "@%#*+=-:. "
 _CHAR_ASPECT_CORRECTION = 0.55
 
-_UPPER_HALF_BLOCK = "\u2580"  # ▀
+_UPPER_HALF_BLOCK = "\u2580"
 _RESET = "\x1b[0m"
 
 
@@ -42,12 +42,6 @@ def _bg(r: int, g: int, b: int) -> str:
 
 
 def supports_truecolor() -> bool:
-    """Best-effort check for 24-bit ANSI color support in the current terminal.
-
-    Modern Windows Terminal / PowerShell 7+ support this out of the box.
-    Legacy conhost (old cmd.exe / PowerShell 5 outside Windows Terminal)
-    generally does not unless VT processing has been explicitly enabled.
-    """
     if os.environ.get("NO_COLOR"):
         return False
     if os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit"):
@@ -81,7 +75,6 @@ def _image_to_ascii(image: "Image.Image", width: int, invert: bool) -> str:
 
     pixels = list(image.getdata())
     ramp = _RAMP[::-1] if invert else _RAMP
-
     lines = []
     for row in range(height):
         row_pixels = pixels[row * width:(row + 1) * width]
@@ -94,14 +87,8 @@ def _image_to_ascii(image: "Image.Image", width: int, invert: bool) -> str:
 
 
 def _image_to_ascii_color(image: "Image.Image", width: int) -> str:
-    """Render using half-block characters + 24-bit ANSI color, like
-    neofetch/fastfetch/chafa do. Each printed row packs 2 image rows: the
-    top pixel becomes the glyph's foreground color, the bottom pixel becomes
-    its background color, doubling vertical resolution for free.
-    """
     image = image.convert("RGB")
     orig_w, orig_h = image.size
-
     height = max(2, round(width * (orig_h / orig_w)))
     if height % 2:
         height += 1
@@ -128,8 +115,7 @@ def _image_to_ascii_color(image: "Image.Image", width: int) -> str:
 
 
 def _default_os_logo() -> str:
-    system = platform.system()
-    return _OS_LOGOS.get(system, _OS_LOGOS["Other"])
+    return _OS_LOGOS.get(platform.system(), _OS_LOGOS["Other"])
 
 
 def render_ascii(
@@ -138,21 +124,12 @@ def render_ascii(
     invert: bool = False,
     color: Optional[bool] = None,
 ) -> str:
-    """Return an ASCII-art rendering of `image_path`.
-
-    color: True forces 24-bit ANSI color (half-block renderer), False forces
-    the plain grayscale character-ramp renderer, None (default) auto-detects
-    based on the terminal. The OS fallback logo (no image_path) is always
-    plain text.
-    """
     if width <= 0:
         raise ValueError("width must be greater than 0")
-
     if image_path is None:
         return _default_os_logo()
 
     image = _load_image(image_path)
-
     use_color = supports_truecolor() if color is None else color
     if use_color:
         return _image_to_ascii_color(image, width=width)
@@ -165,7 +142,6 @@ def print_ascii(
     invert: bool = False,
     color: Optional[bool] = None,
 ) -> None:
-    """Convenience wrapper that prints the result of render_ascii()."""
     print(render_ascii(image_path=image_path, width=width, invert=invert, color=color))
 
 
