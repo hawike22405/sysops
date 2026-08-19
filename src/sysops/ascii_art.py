@@ -170,39 +170,39 @@ def print_ascii(
 
 
 _OS_LOGOS = {
-    "Linux": r"""
+    "Linux": """\x1b[37m
         .--.
        |o_o |
        |:_/ |
-      //   \ \
+      //   \\ \\
      (|     | )
-    /'\_   _/`\
-    \___)=(___/
-      LINUX
+    /'\\_   _/`\\
+    \\___)=(___/
+      \x1b[33mLINUX\x1b[0m
 """.strip("\n"),
-    "Darwin": r"""
+    "Darwin": """\x1b[32m
         ,--.
       ,'    `.
-     /  .--.  \
+     /  .--.  \\
     |  (    )  |
-     \  `--'  /
+     \\  `--'  /
       `.    ,'
         `--'
-      macOS
+      \x1b[37mmacOS\x1b[0m
 """.strip("\n"),
-    "Windows": r"""
+    "Windows": """\x1b[36m
     ██████╗ ██████╗
     ██╔══██╗██╔══██╗
     ██████╔╝██████╔╝
     ██╔══██╗██╔══██╗
     ██████╔╝██████╔╗
     ╚═════╝ ╚═════╝
-     WINDOWS
+     \x1b[34mWINDOWS\x1b[0m
 """.strip("\n"),
-    "Other": r"""
+    "Other": """\x1b[31m
       +------+
       |  ?   |
       +------+
-    UNKNOWN OS
+    UNKNOWN OS\x1b[0m
 """.strip("\n"),
 }

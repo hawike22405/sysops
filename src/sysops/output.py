@@ -40,13 +40,24 @@ def _build_panels(data: dict, detail: str) -> list:
     kernel = host.get("kernel") or "Unknown"
     kernel_version = host.get("kernel_version") or "Unknown"
     node = host.get("node") or "localhost"
-    panels.append(
-        Panel(
-            f"{distro} — {kernel} ({kernel_version})",
-            title=f"[green]{node}",
-            expand=False,
-        )
-    )
+    desktop = data.get("desktop", {})
+    os_table = Table(show_header=False, box=box.MINIMAL, expand=True)
+    os_table.add_column("Key", style="bold cyan", width=10)
+    os_table.add_column("Value")
+    os_table.add_row("OS", distro)
+    os_table.add_row("Kernel", f"{kernel} ({kernel_version})")
+    uptime = _format_uptime(data.get("uptime", {}).get("uptime_seconds"))
+    os_table.add_row("Uptime", uptime)
+    if desktop.get("de"):
+        os_table.add_row("DE", desktop["de"])
+    if desktop.get("wm"):
+        os_table.add_row("WM", desktop["wm"])
+    if desktop.get("terminal"):
+        os_table.add_row("Terminal", desktop["terminal"])
+    if desktop.get("shell"):
+        os_table.add_row("Shell", desktop["shell"])
+
+    panels.append(Panel(os_table, title=f"[bold green]{node}[/]", border_style="green"))
 
     cpu = data.get("cpu", {})
     cpu_table = Table(show_header=False, box=box.MINIMAL, expand=True)

@@ -172,11 +172,44 @@ def get_network_info() -> Dict[str, Any]:
         }
     return {"interfaces": interfaces}
 
+def get_desktop_info() -> Dict[str, Any]:
+    info = {}
+    
+    # Terminal
+    if os.environ.get("WT_SESSION"):
+        info["terminal"] = "Windows Terminal"
+    elif os.environ.get("TERM_PROGRAM"):
+        info["terminal"] = os.environ.get("TERM_PROGRAM")
+    elif platform.system() == "Windows":
+        info["terminal"] = "Conhost"
+    else:
+        info["terminal"] = os.environ.get("TERM")
+        
+    # Shell
+    shell = os.environ.get("SHELL")
+    if platform.system() == "Windows":
+        if "PSModulePath" in os.environ:
+            shell = "PowerShell"
+        else:
+            shell = os.environ.get("ComSpec", "cmd.exe").split("\\")[-1]
+    info["shell"] = shell
+
+    # DE / WM
+    if platform.system() == "Windows":
+        info["de"] = "Windows Desktop"
+        info["wm"] = "DWM"
+    else:
+        info["de"] = os.environ.get("XDG_CURRENT_DESKTOP") or os.environ.get("DESKTOP_SESSION")
+        info["wm"] = os.environ.get("XDG_SESSION_TYPE") or "Unknown"
+        
+    return {k: v for k, v in info.items() if v}
+
 def collect_all(detail: str = "brief", modules: List[str] = None, no_root: bool = True) -> Dict[str, Any]:
     data = {}
     data["os"] = get_os_info()
     data["host"] = get_kernel_and_host()
     data["uptime"] = get_uptime()
+    data["desktop"] = get_desktop_info()
     if modules is None or "cpu" in modules:
         data["cpu"] = get_cpu_info()
     if modules is None or "memory" in modules:
