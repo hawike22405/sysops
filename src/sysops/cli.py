@@ -11,90 +11,39 @@ from .probes import collect_all
 
 def add_ascii_subcommand(subparsers):
     parser = subparsers.add_parser("ascii", help="Render an image as ASCII art")
-    parser.add_argument(
-        "image",
-        nargs="?",
-        default=None,
-        help="Path to an image file. If omitted, shows your OS logo.",
-    )
+    parser.add_argument("image", nargs="?", default=None, help="Path to an image file. If omitted, shows your OS logo.")
     parser.add_argument("--width", type=int, default=80, help="Output width in characters")
-    parser.add_argument(
-        "--invert",
-        action="store_true",
-        help="Invert the brightness ramp (plain-text mode only)",
-    )
+    parser.add_argument("--invert", action="store_true", help="Invert the brightness ramp (plain-text mode only)")
     color_group = parser.add_mutually_exclusive_group()
-    color_group.add_argument(
-        "--color",
-        dest="color",
-        action="store_true",
-        default=None,
-        help="Force 24-bit ANSI color rendering",
-    )
-    color_group.add_argument(
-        "--no-color",
-        dest="color",
-        action="store_false",
-        help="Force plain grayscale character-ramp rendering",
-    )
+    color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Force 24-bit ANSI color rendering")
+    color_group.add_argument("--no-color", dest="color", action="store_false", help="Force plain grayscale character-ramp rendering")
     parser.set_defaults(func=_run_ascii)
 
 
 def _run_ascii(args):
     try:
-        print(
-            render_ascii(
-                args.image,
-                width=args.width,
-                invert=args.invert,
-                color=args.color,
-            )
-        )
+        print(render_ascii(args.image, width=args.width, invert=args.invert, color=args.color))
     except (UnsupportedImageError, ValueError) as exc:
         print(f"Error: {exc}")
         raise SystemExit(1)
 
 
 def add_logo_subcommand(subparsers):
-    parser = subparsers.add_parser(
-        "logo",
-        help="Manage the default logo shown beside `sysops`",
-    )
+    parser = subparsers.add_parser("logo", help="Manage the default logo shown beside `sysops`")
     logo_sub = parser.add_subparsers(dest="logo_command")
 
     set_parser = logo_sub.add_parser("set", help="Save an image as your default logo")
     set_parser.add_argument("image", help="Path to an image file")
-    set_parser.add_argument(
-        "--width",
-        type=int,
-        help="Default logo width in characters (default: 28)",
-    )
+    set_parser.add_argument("--width", type=int, help="Default logo width in characters (default: 28)")
     color_group = set_parser.add_mutually_exclusive_group()
-    color_group.add_argument(
-        "--color",
-        dest="color",
-        action="store_true",
-        default=None,
-        help="Always render this logo in 24-bit ANSI color",
-    )
-    color_group.add_argument(
-        "--no-color",
-        dest="color",
-        action="store_false",
-        help="Always render this logo in plain grayscale",
-    )
+    color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Always render this logo in 24-bit ANSI color")
+    color_group.add_argument("--no-color", dest="color", action="store_false", help="Always render this logo in plain grayscale")
     set_parser.set_defaults(func=_run_logo_set)
 
-    clear_parser = logo_sub.add_parser(
-        "clear",
-        help="Remove the saved logo and revert to the built-in OS logo",
-    )
+    clear_parser = logo_sub.add_parser("clear", help="Remove the saved logo and revert to the built-in OS logo")
     clear_parser.set_defaults(func=_run_logo_clear)
 
-    show_parser = logo_sub.add_parser(
-        "show",
-        help="Show the currently saved logo settings",
-    )
+    show_parser = logo_sub.add_parser("show", help="Show the currently saved logo settings")
     show_parser.set_defaults(func=_run_logo_show)
 
 
@@ -103,11 +52,9 @@ def _run_logo_set(args):
     if not path.is_file():
         print(f"Error: No such image file: {path}")
         raise SystemExit(1)
-
     if args.width is not None and args.width <= 0:
         print("Error: width must be greater than 0")
         raise SystemExit(1)
-
     try:
         render_ascii(str(path), width=4, color=False)
     except (UnsupportedImageError, ValueError) as exc:
@@ -135,7 +82,6 @@ def _run_logo_clear(_args):
     if not cfg.get("image"):
         print("No custom logo is set.")
         return
-
     cfg.pop("image", None)
     cfg.pop("width", None)
     cfg.pop("color", None)
@@ -146,12 +92,8 @@ def _run_logo_clear(_args):
 def _run_logo_show(_args):
     cfg = load_config()
     if not cfg.get("image"):
-        print(
-            "No custom logo set (using built-in OS logo).\n"
-            f"Config file: {config_path()}"
-        )
+        print(f"No custom logo set (using built-in OS logo).\nConfig file: {config_path()}")
         return
-
     print(f"Image: {cfg['image']}")
     print(f"Width: {cfg.get('width', 28)} (default: 28)")
     print(f"Color: {cfg.get('color', 'auto')}")
@@ -164,67 +106,20 @@ def add_play_subcommand(subparsers):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(
-        prog="sysops",
-        description="System spec reporter (prototype)",
-    )
-    parser.add_argument(
-        "--format",
-        choices=["pretty", "json", "compact"],
-        default="pretty",
-        help="output format",
-    )
-    parser.add_argument(
-        "--detail",
-        choices=["brief", "full"],
-        default="brief",
-        help="detail level",
-    )
+    parser = argparse.ArgumentParser(prog="sysops", description="System spec reporter (prototype)")
+    parser.add_argument("--format", choices=["pretty", "json", "compact"], default="pretty", help="output format")
+    parser.add_argument("--detail", choices=["brief", "full"], default="brief", help="detail level")
     parser.add_argument("--output", "-o", help="write output to file (path)")
     parser.add_argument("--modules", help="comma-separated modules to run (default: all)")
     parser.add_argument("--watch", type=int, help="repeat every N seconds")
-    parser.add_argument(
-        "--no-root",
-        action="store_true",
-        help="do not attempt privileged probes",
-    )
-    parser.add_argument(
-        "--play",
-        action="store_true",
-        help="play the Dino run game",
-    )
-
-    parser.add_argument(
-        "--image",
-        metavar="PATH",
-        default=None,
-        help="Use this image as the logo instead of the saved/default OS logo",
-    )
-    parser.add_argument(
-        "--logo-width",
-        type=int,
-        default=None,
-        help="Logo width in characters (default: 28, or saved default)",
-    )
-    parser.add_argument(
-        "--no-logo",
-        action="store_true",
-        help="Do not show a logo beside the system summary",
-    )
+    parser.add_argument("--no-root", action="store_true", help="do not attempt privileged probes")
+    parser.add_argument("--play", action="store_true", help="play the Dino run game")
+    parser.add_argument("--image", metavar="PATH", default=None, help="Use this image as the logo instead of the saved/default OS logo")
+    parser.add_argument("--logo-width", type=int, default=None, help="Logo width in characters (default: 28, or saved default)")
+    parser.add_argument("--no-logo", action="store_true", help="Do not show a logo beside the system summary")
     logo_color_group = parser.add_mutually_exclusive_group()
-    logo_color_group.add_argument(
-        "--logo-color",
-        dest="logo_color",
-        action="store_true",
-        default=None,
-        help="Force 24-bit ANSI color for the logo",
-    )
-    logo_color_group.add_argument(
-        "--no-logo-color",
-        dest="logo_color",
-        action="store_false",
-        help="Force plain grayscale logo",
-    )
+    logo_color_group.add_argument("--logo-color", dest="logo_color", action="store_true", default=None, help="Force 24-bit ANSI color for the logo")
+    logo_color_group.add_argument("--no-logo-color", dest="logo_color", action="store_false", help="Force plain grayscale logo")
 
     subparsers = parser.add_subparsers(dest="command")
     add_ascii_subcommand(subparsers)
@@ -240,11 +135,9 @@ def main():
     if args.play or args.command == "play":
         run_game()
         return
-
     if args.command == "ascii":
         args.func(args)
         return
-
     if args.command == "logo":
         if getattr(args, "func", None):
             args.func(args)
@@ -256,21 +149,15 @@ def main():
     if args.modules:
         modules = [item.strip() for item in args.modules.split(",") if item.strip()]
 
-    data = collect_all(
-        detail=args.detail,
-        modules=modules,
-        no_root=args.no_root,
-    )
+    data = collect_all(detail=args.detail, modules=modules, no_root=args.no_root)
 
     def build_logo():
         if args.no_logo:
             return None
-
         cfg = load_config()
         image = args.image if args.image is not None else cfg.get("image")
         width = args.logo_width if args.logo_width is not None else cfg.get("width", 28)
         color = args.logo_color if args.logo_color is not None else cfg.get("color")
-
         try:
             return render_ascii(image, width=width, color=color)
         except (UnsupportedImageError, ValueError) as exc:
