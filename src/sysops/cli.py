@@ -4,6 +4,7 @@ from pathlib import Path
 from .probes import collect_all
 from .output import render_pretty, render_json
 from .ascii_art import render_ascii, UnsupportedImageError
+from .dino import run_game
 
 
 def add_ascii_subcommand(subparsers):
@@ -23,6 +24,11 @@ def _run_ascii(args):
         raise SystemExit(1)
 
 
+def add_play_subcommand(subparsers):
+    p = subparsers.add_parser("play", help="Play the Dino run game")
+    p.set_defaults(func=lambda args: run_game())
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="sysops", description="System spec reporter (prototype)")
     p.add_argument("--format", choices=["pretty", "json", "compact"], default="pretty", help="output format")
@@ -31,14 +37,20 @@ def build_parser():
     p.add_argument("--modules", help="comma-separated modules to run (default: all)")
     p.add_argument("--watch", type=int, help="repeat every N seconds")
     p.add_argument("--no-root", action="store_true", help="do not attempt privileged probes")
+    p.add_argument("-play", "--play", action="store_true", help="play the Dino run game")
     subparsers = p.add_subparsers(dest="command")
     add_ascii_subcommand(subparsers)
+    add_play_subcommand(subparsers)
     return p
 
 
 def main():
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.play or getattr(args, "command", None) == "play":
+        run_game()
+        return
 
     if getattr(args, "command", None) == "ascii":
         args.func(args)
