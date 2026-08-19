@@ -1,41 +1,42 @@
 # sysops
 
-A modern, terminal-first system information reporter (prototype).
+A modern, terminal-first system information reporter with a Fastfetch/Neofetch-style display and image-to-ASCII rendering.
 
 ## Features
 
-- Pretty terminal output (Rich)
+- Fast, terminal-first system summary
+- Rich terminal output
 - JSON output for automation
-- Modular probes: OS, CPU, memory, disks, network, GPU, sensors
-- ASCII-art image rendering
+- Modular probes for OS, CPU, memory, disks, network, GPU, and sensors
+- Neofetch/Fastfetch-style logo beside system information
+- Render any supported image as ASCII art
+- 24-bit truecolor image rendering with ANSI half-block characters
+- Automatic terminal color detection
+- Persistent custom logo configuration
+- One-off logo overrides with `--image`
 - No privileged operations by default
 
 ## Installation
 
 ### Linux / macOS / WSL / Git Bash
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hawike22405/sysops/main/install.sh | bash
 ```
 
 ### Windows (PowerShell)
+
 ```powershell
 irm https://raw.githubusercontent.com/hawike22405/sysops/main/install.ps1 | iex
 ```
-> Requires Python 3 and Git for Windows to be installed and on `PATH`.
-> If PowerShell blocks the script due to execution policy, run once:
-> `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, then retry the command above.
 
-Both installers do the same thing: check for Python 3, clone the repo (or use a local
-checkout), create an isolated virtual environment, install `sysops` into it, and expose
-a `sysops` command on your `PATH`.
+The Windows installer creates an isolated virtual environment, installs the latest source from `main`, verifies that the `ascii` command is available, and creates the `sysops` launcher.
 
-After installation:
+After installation, open a new terminal and run:
 
 ```bash
 sysops
 ```
-
-The installer creates an isolated environment under `~/.local/share/sysops` and places the `sysops` command in `~/.local/bin`.
 
 ### From a cloned repository
 
@@ -45,15 +46,13 @@ cd sysops
 ./install.sh
 ```
 
-Then run:
+Then:
 
 ```bash
 sysops
 ```
 
 ### Development installation
-
-For development, you can use the included Makefile:
 
 ```bash
 git clone https://github.com/hawike22405/sysops.git
@@ -62,77 +61,250 @@ make install
 make run
 ```
 
-## Usage
+## Basic Usage
 
-Run the command from any directory:
+Run the system reporter:
 
 ```bash
 sysops
 ```
 
-Available options:
+Useful options:
 
 ```bash
 sysops --detail full
 sysops --format json
 sysops --format compact
 sysops --no-root
+sysops --no-logo
 ```
+
+## Neofetch / Fastfetch-style Logo
+
+By default, `sysops` displays a built-in operating-system logo beside the system information panels.
+
+### Use an image once
+
+Pass an image with `--image`:
+
+```powershell
+sysops --image "D:\Opera Downloads\marshmello-material-3840x2160-26106.png"
+```
+
+Control the logo width:
+
+```powershell
+sysops --image "D:\Opera Downloads\marshmello-material-3840x2160-26106.png" --logo-width 24
+```
+
+Disable the logo completely:
+
+```bash
+sysops --no-logo
+```
+
+### Logo color controls
+
+Automatic color detection is used by default. You can override it:
+
+```bash
+sysops --logo-color
+sysops --no-logo-color
+```
+
+These options control the logo displayed beside the system summary.
+
+## Persistent Custom Logo
+
+You can save an image as your default logo so you do not need to pass `--image` every time.
+
+### Set the default logo
+
+```powershell
+sysops logo set "D:\Opera Downloads\marshmello-material-3840x2160-26106.png" --width 24 --color
+```
+
+Now simply run:
+
+```bash
+sysops
+```
+
+The saved image, width, and color preference will be used automatically.
+
+### View the saved logo configuration
+
+```bash
+sysops logo show
+```
+
+### Remove the custom logo
+
+```bash
+sysops logo clear
+```
+
+After clearing it, `sysops` returns to the built-in OS logo.
+
+### Configuration location
+
+On Windows, the configuration is stored at:
+
+```text
+%APPDATA%\sysops\config.json
+```
+
+On Linux/macOS it is stored under the XDG configuration directory, normally:
+
+```text
+~/.config/sysops/config.json
+```
+
+The configuration is plain JSON and can be inspected or edited manually.
 
 ## ASCII Art
 
-You can turn any supported image into ASCII art directly from the terminal.
+`sysops ascii` converts an image into terminal-rendered ASCII art.
 
-### 1. Upload or copy an image
+### Render an uploaded or local image
 
-Place your image anywhere you can access from the terminal, for example:
+Copy or download an image somewhere accessible from the terminal, then run:
 
-```text
-Downloads/my-image.png
+```powershell
+sysops ascii "D:\Opera Downloads\marshmello-material-3840x2160-26106.png"
 ```
 
-The ASCII-art command supports common image formats handled by Pillow, including PNG, JPG, BMP, GIF, and WEBP.
+Common formats such as PNG, JPG, BMP, GIF, and WEBP are handled by Pillow.
 
-### 2. Run the ASCII command
-
-Pass the image path to `sysops ascii`:
+### Control the size
 
 ```bash
-sysops ascii Downloads/my-image.png
+sysops ascii image.png --width 120
 ```
 
-The command converts the image to grayscale and prints the ASCII version in your terminal.
-
-### 3. Change the output width
-
-Use `--width` to control how wide the ASCII art is:
+### Force truecolor rendering
 
 ```bash
-sysops ascii Downloads/my-image.png --width 120
+sysops ascii image.png --color
 ```
 
-A larger width gives more detail but uses more terminal space.
+This uses 24-bit ANSI colors and half-block characters for a higher-resolution, Fastfetch-style terminal image.
 
-### 4. Invert the brightness
-
-Use `--invert` to reverse the character brightness ramp:
+### Force plain grayscale rendering
 
 ```bash
-sysops ascii Downloads/my-image.png --invert
+sysops ascii image.png --no-color
 ```
 
-You can combine both options:
+### Invert grayscale output
+
+`--invert` applies to the plain character-ramp renderer:
 
 ```bash
-sysops ascii Downloads/my-image.png --width 120 --invert
+sysops ascii image.png --no-color --invert
 ```
 
-### 5. Show the built-in OS logo
-
-You do not need to provide an image. Running the command without a path displays the built-in logo for the detected operating system:
+### Show the built-in OS logo
 
 ```bash
 sysops ascii
 ```
+
+## Command Reference
+
+### System summary
+
+```text
+sysops [OPTIONS]
+```
+
+Important options:
+
+| Option | Description |
+|---|---|
+| `--format {pretty,json,compact}` | Select output format |
+| `--detail {brief,full}` | Select detail level |
+| `--output, -o PATH` | Write output to a file |
+| `--modules MODULES` | Run selected comma-separated modules |
+| `--watch SECONDS` | Repeat the report at an interval |
+| `--no-root` | Disable privileged probes |
+| `--image PATH` | Use a custom image as the logo |
+| `--logo-width N` | Set logo width in terminal characters |
+| `--no-logo` | Hide the logo |
+| `--logo-color` | Force 24-bit color for the logo |
+| `--no-logo-color` | Force grayscale for the logo |
+
+### ASCII image command
+
+```text
+sysops ascii [IMAGE] [OPTIONS]
+```
+
+| Option | Description |
+|---|---|
+| `--width N` | ASCII output width |
+| `--invert` | Invert the grayscale character ramp |
+| `--color` | Force 24-bit ANSI color rendering |
+| `--no-color` | Force plain grayscale rendering |
+
+### Persistent logo commands
+
+```text
+sysops logo set IMAGE [OPTIONS]
+sysops logo show
+sysops logo clear
+```
+
+`logo set` accepts:
+
+```text
+--width N
+--color
+--no-color
+```
+
+## Examples
+
+Show system information with the built-in logo:
+
+```bash
+sysops
+```
+
+Use a custom image for one run:
+
+```bash
+sysops --image ./logo.png --logo-width 24
+```
+
+Save an image as the default logo:
+
+```bash
+sysops logo set ./logo.png --width 24 --color
+```
+
+Render an image as truecolor ASCII art:
+
+```bash
+sysops ascii ./logo.png --width 80 --color
+```
+
+Render a grayscale inverted version:
+
+```bash
+sysops ascii ./logo.png --width 80 --no-color --invert
+```
+
+Return to the built-in OS logo:
+
+```bash
+sysops logo clear
+```
+
+## Requirements
+
+- Python 3
+- Pillow for image rendering
+- Rich for the terminal interface
 
 See `docs/DESIGN.md` for design notes and roadmap.
