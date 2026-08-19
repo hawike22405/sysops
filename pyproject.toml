@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sysops"
-version = "0.1.3"
+version = "0.1.4"
 description = "Terminal-first system information reporter (prototype)"
 authors = [
   {name = "hawike22405"}
@@ -13,7 +13,10 @@ license = {text = "MIT"}
 
 # Dependencies required when installing the package
 dependencies = [
+  "rich>=13.0.0",
+  "psutil>=5.0.0",
   "Pillow>=10.0",
+  "windows-curses; sys_platform == 'win32'"
 ]
 
 [project.scripts]
