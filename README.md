@@ -79,7 +79,35 @@ sysops --no-root
 sysops --no-logo
 ```
 
-## Neofetch / Fastfetch-style Logo
+## Game
+
+You can also play the Chrome-offline-style Dino runner directly in your
+terminal. Jump over cacti and duck under flying pterodactyls to score points:
+
+```bash
+sysops play
+# or
+sysops --play
+```
+
+Controls:
+- `SPACE` / `UP` / `W`: Jump (hold for variable jump height)
+- `DOWN` / `S` / `,`: Duck
+- `P`: Pause / Resume
+- `SPACE` / `R`: Start / Restart game
+- `Q`: Quit
+
+Features:
+- Start screen with countdown
+- Animated Dino (2-frame run cycle, eye blinking, ducking poses)
+- Pterodactyls, clouds, stars, and day/night cycle
+- High score persistence saved to `~/.config/sysops/dino_highscore.json`
+- Smooth ground scrolling, stats scoreboard, and time-based physics
+- Safe terminal size guards & resize handling
+
+On Windows, install `windows-curses` first (`pip install windows-curses`).
+
+## ASCII Art
 
 By default, `sysops` displays a built-in operating-system logo beside the system information panels.
 
