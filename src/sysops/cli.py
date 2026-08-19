@@ -11,13 +11,19 @@ def add_ascii_subcommand(subparsers):
     p.add_argument("image", nargs="?", default=None,
                    help="Path to an image file. If omitted, shows your OS logo.")
     p.add_argument("--width", type=int, default=80, help="Output width in characters")
-    p.add_argument("--invert", action="store_true", help="Invert the brightness ramp")
+    p.add_argument("--invert", action="store_true",
+                   help="Invert the brightness ramp (plain-text mode only)")
+    color_group = p.add_mutually_exclusive_group()
+    color_group.add_argument("--color", dest="color", action="store_true", default=None,
+                              help="Force 24-bit ANSI color rendering (like neofetch/fastfetch)")
+    color_group.add_argument("--no-color", dest="color", action="store_false",
+                              help="Force plain grayscale character-ramp rendering")
     p.set_defaults(func=_run_ascii)
 
 
 def _run_ascii(args):
     try:
-        print(render_ascii(args.image, width=args.width, invert=args.invert))
+        print(render_ascii(args.image, width=args.width, invert=args.invert, color=args.color))
     except (UnsupportedImageError, ValueError) as e:
         print(f"Error: {e}")
         raise SystemExit(1)
