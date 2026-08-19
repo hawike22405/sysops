@@ -6,8 +6,10 @@ Render an image as ASCII art. If no image is supplied, falls back to a
 built-in ASCII logo for the current operating system (Linux / macOS / Windows).
 
 Public API:
-    render_ascii(image_path=None, width=80, invert=False, color=True) -> str
-    print_ascii(image_path=None, width=80, invert=False, color=True) -> None
+    render_ascii(image_path=None, width=80, invert=False, color=True,
+                 style="chars") -> str
+    print_ascii(image_path=None, width=80, invert=False, color=True,
+                style="chars") -> None
 
 Dependencies: Pillow (`pip install Pillow`)
 """
@@ -42,6 +44,7 @@ def _bg(r: int, g: int, b: int) -> str:
 
 
 def supports_truecolor() -> bool:
+    """Best-effort detection of 24-bit ANSI truecolor support."""
     if os.environ.get("NO_COLOR"):
         return False
     if os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit"):
@@ -64,7 +67,9 @@ def _load_image(image_path: str) -> "Image.Image":
     try:
         return Image.open(path)
     except Exception as exc:
-        raise UnsupportedImageError(f"Could not read '{path}' as an image: {exc}") from exc
+        raise UnsupportedImageError(
+            f"Could not read '{path}' as an image: {exc}"
+        ) from exc
 
 
 def _image_to_ascii(image: "Image.Image", width: int, invert: bool) -> str:
@@ -86,7 +91,8 @@ def _image_to_ascii(image: "Image.Image", width: int, invert: bool) -> str:
     return "\n".join(lines)
 
 
-def _image_to_ascii_color(image: "Image.Image", width: int) -> str:
+def _image_to_ascii_color_blocks(image: "Image.Image", width: int) -> str:
+    """Render with half-block cells and separate foreground/background colors."""
     image = image.convert("RGB")
     orig_w, orig_h = image.size
     height = max(2, round(width * (orig_h / orig_w)))
@@ -114,6 +120,37 @@ def _image_to_ascii_color(image: "Image.Image", width: int) -> str:
     return "\n".join(lines)
 
 
+def _image_to_ascii_color_chars(
+    image: "Image.Image", width: int, invert: bool = False
+) -> str:
+    """Render colored ASCII glyphs for a textured, classic ASCII look."""
+    rgb_image = image.convert("RGB")
+    orig_w, orig_h = rgb_image.size
+    height = max(
+        1, int((orig_h / orig_w) * width * _CHAR_ASPECT_CORRECTION)
+    )
+    rgb_image = rgb_image.resize((width, height))
+    pixels = rgb_image.load()
+
+    # Bright pixels are dense glyphs by default; --invert flips the ramp.
+    ramp = _RAMP if invert else _RAMP[::-1]
+    lines = []
+    for row in range(height):
+        chars = []
+        last_fg = None
+        for col in range(width):
+            r, g, b = pixels[col, row]
+            lum = int(0.299 * r + 0.587 * g + 0.114 * b)
+            glyph = ramp[min(len(ramp) - 1, lum * len(ramp) // 256)]
+            prefix = ""
+            if (r, g, b) != last_fg:
+                prefix = _fg(r, g, b)
+                last_fg = (r, g, b)
+            chars.append(prefix + glyph)
+        lines.append("".join(chars) + _RESET)
+    return "\n".join(lines)
+
+
 def _default_os_logo() -> str:
     return _OS_LOGOS.get(platform.system(), _OS_LOGOS["Other"])
 
@@ -123,16 +160,28 @@ def render_ascii(
     width: int = 80,
     invert: bool = False,
     color: Optional[bool] = None,
+    style: str = "chars",
 ) -> str:
+    """Return an ASCII-art rendering of ``image_path``.
+
+    ``color`` forces or disables ANSI truecolor; ``None`` auto-detects.
+    ``style`` controls color rendering:
+      - ``chars``: colored ASCII glyphs for a textured look.
+      - ``blocks``: solid half-block cells for a sharper look.
+    """
     if width <= 0:
         raise ValueError("width must be greater than 0")
+    if style not in ("chars", "blocks"):
+        raise ValueError("style must be 'chars' or 'blocks'")
     if image_path is None:
         return _default_os_logo()
 
     image = _load_image(image_path)
     use_color = supports_truecolor() if color is None else color
     if use_color:
-        return _image_to_ascii_color(image, width=width)
+        if style == "blocks":
+            return _image_to_ascii_color_blocks(image, width=width)
+        return _image_to_ascii_color_chars(image, width=width, invert=invert)
     return _image_to_ascii(image, width=width, invert=invert)
 
 
@@ -141,8 +190,17 @@ def print_ascii(
     width: int = 80,
     invert: bool = False,
     color: Optional[bool] = None,
+    style: str = "chars",
 ) -> None:
-    print(render_ascii(image_path=image_path, width=width, invert=invert, color=color))
+    print(
+        render_ascii(
+            image_path=image_path,
+            width=width,
+            invert=invert,
+            color=color,
+            style=style,
+        )
+    )
 
 
 _OS_LOGOS = {
