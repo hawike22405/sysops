@@ -3,11 +3,6 @@
 
     Usage:
         irm https://raw.githubusercontent.com/hawike22405/sysops/main/install.ps1 | iex
-
-    Note: intentionally has no #Requires statement — #Requires is only
-    honored when a script is run as a .ps1 file, not when piped into
-    Invoke-Expression, and including it can itself break iex parsing on
-    some PowerShell versions.
 #>
 
 if ($PSVersionTable.PSVersion.Major -lt 5) {
@@ -21,12 +16,12 @@ $RepoUrl    = "https://github.com/hawike22405/sysops.git"
 $InstallDir = if ($env:SYSOPS_INSTALL_DIR) { $env:SYSOPS_INSTALL_DIR } else { Join-Path $env:USERPROFILE ".local\share\sysops" }
 $BinDir     = if ($env:SYSOPS_BIN_DIR)     { $env:SYSOPS_BIN_DIR }     else { Join-Path $env:USERPROFILE ".local\bin" }
 $VenvDir    = Join-Path $InstallDir ".venv"
+$SrcDir     = Join-Path $InstallDir "src-checkout"
 
 function Info($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 function Warn($msg) { Write-Host "!! $msg" -ForegroundColor Yellow }
 function Err($msg)  { Write-Host "ERROR: $msg" -ForegroundColor Red }
 
-# --- locate a usable Python 3 -------------------------------------------------
 $pythonCmd  = $null
 $pythonArgs = @()
 
@@ -42,58 +37,64 @@ if (-not $pythonCmd -and (Get-Command py -ErrorAction SilentlyContinue)) {
 }
 if (-not $pythonCmd) {
     Err "Python 3 is required but was not found on PATH."
-    Err "Install it from https://www.python.org/downloads/ and make sure 'Add python.exe to PATH' is checked, then re-run this installer."
     exit 1
 }
 
 $pyVersion = & $pythonCmd @pythonArgs -c "import sys; print('%d.%d' % sys.version_info[:2])"
 Info "Found $pythonCmd $pyVersion"
 
-# --- decide source: local checkout vs fresh git clone -------------------------
-$scriptDir = $null
-if ($PSCommandPath) { $scriptDir = Split-Path -Parent $PSCommandPath }
-if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
-
-if ((Test-Path (Join-Path $scriptDir "pyproject.toml")) -and (Test-Path (Join-Path $scriptDir "src\sysops"))) {
-    $srcDir = $scriptDir
-    Info "Using local source at $srcDir"
-} else {
-    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-        Err "git is required to fetch sysops but was not found on PATH."
-        Err "Install it from https://git-scm.com/download/win and re-run this installer."
-        exit 1
-    }
-    $srcDir = Join-Path $InstallDir "src-checkout"
-    Info "Fetching sysops source into $srcDir"
-    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-    if (Test-Path (Join-Path $srcDir ".git")) {
-        git -C $srcDir pull --ff-only
-    } else {
-        if (Test-Path $srcDir) { Remove-Item -Recurse -Force $srcDir }
-        git clone --depth 1 $RepoUrl $srcDir
-    }
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Err "git is required to fetch sysops but was not found on PATH."
+    exit 1
 }
 
-# --- venv + install -------------------------------------------------------------
-Info "Setting up virtual environment at $VenvDir"
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+
+if (Test-Path (Join-Path $SrcDir ".git")) {
+    Info "Updating existing sysops source"
+    git -C $SrcDir fetch --depth 1 origin main
+    if ($LASTEXITCODE -ne 0) { throw "Failed to fetch latest sysops source" }
+    git -C $SrcDir reset --hard origin/main
+    if ($LASTEXITCODE -ne 0) { throw "Failed to reset source to origin/main" }
+} else {
+    Info "Cloning latest sysops source"
+    if (Test-Path $SrcDir) { Remove-Item -Recurse -Force $SrcDir }
+    git clone --depth 1 --branch main $RepoUrl $SrcDir
+    if ($LASTEXITCODE -ne 0) { throw "Failed to clone sysops repository" }
+}
+
+if (-not (Test-Path (Join-Path $SrcDir "src\sysops\cli.py"))) {
+    throw "Latest source does not contain src\sysops\cli.py"
+}
+
+if (Test-Path $VenvDir) {
+    Info "Removing previous virtual environment"
+    Remove-Item -Recurse -Force $VenvDir
+}
+
+Info "Creating virtual environment at $VenvDir"
 & $pythonCmd @pythonArgs -m venv $VenvDir
+if ($LASTEXITCODE -ne 0) { throw "Failed to create virtual environment" }
 
 $venvPython = Join-Path $VenvDir "Scripts\python.exe"
 & $venvPython -m pip install --upgrade pip --quiet
+if ($LASTEXITCODE -ne 0) { throw "Failed to upgrade pip" }
 
-Info "Installing sysops"
-& $venvPython -m pip install --quiet $srcDir
+Info "Installing latest sysops source"
+& $venvPython -m pip install --quiet --no-cache-dir $SrcDir
+if ($LASTEXITCODE -ne 0) { throw "Failed to install sysops" }
 
-# --- expose the `sysops` command -------------------------------------------------
-# Windows can't rely on a plain symlink without elevated privileges, so we
-# generate a tiny .cmd shim that forwards to the venv's installed exe instead.
 New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 
 $venvExe = Join-Path $VenvDir "Scripts\sysops.exe"
 if (-not (Test-Path $venvExe)) {
-    Err "Install finished but $venvExe was not found. Check the package's entry_points/console_scripts config."
+    Err "Install finished but $venvExe was not found."
     exit 1
+}
+
+$asciiCheck = & $venvPython -c "from sysops.cli import build_parser; p=build_parser(); choices=[a.choices for a in p._actions if hasattr(a, 'choices') and isinstance(a.choices, dict)]; print('ascii' in next((c for c in choices if isinstance(c, dict)), {}))"
+if ($LASTEXITCODE -ne 0) {
+    throw "Could not verify the installed sysops CLI"
 }
 
 $shimPath = Join-Path $BinDir "sysops.cmd"
@@ -102,17 +103,39 @@ $shimContent = @"
 "$venvExe" %*
 "@
 Set-Content -Path $shimPath -Value $shimContent -Encoding ASCII -Force
-Info "Linked $shimPath -> $venvExe"
 
-# --- PATH handling ---------------------------------------------------------------
-$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if ($userPath -notlike "*$BinDir*") {
-    Warn "$BinDir is not on your PATH yet."
-    $newPath = if ([string]::IsNullOrEmpty($userPath)) { $BinDir } else { "$userPath;$BinDir" }
-    [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-    $env:Path = "$env:Path;$BinDir"
-    Warn "Added $BinDir to your User PATH."
-    Warn "Open a NEW terminal window for this to take effect, then run: sysops"
-} else {
-    Info "Install complete! Run it with: sysops"
+# Remove stale launchers that can shadow the managed sysops command.
+$staleLocations = @(
+    (Join-Path $env:USERPROFILE ".local\bin\sysops.ps1"),
+    (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\Scripts\sysops.exe")
+)
+foreach ($stale in $staleLocations) {
+    if (Test-Path $stale) {
+        try {
+            Remove-Item -Force $stale
+            Info "Removed stale launcher: $stale"
+        } catch {
+            Warn "Could not remove stale launcher: $stale"
+        }
+    }
 }
+
+# Put the managed sysops directory FIRST in the current and user PATH.
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+$entries = @()
+if ($userPath) {
+    $entries = $userPath -split ';' | Where-Object {
+        $_ -and ($_ -ne $BinDir)
+    }
+}
+$newUserPath = (@($BinDir) + $entries) -join ';'
+[Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+
+$currentEntries = $env:Path -split ';' | Where-Object {
+    $_ -and ($_ -ne $BinDir)
+}
+$env:Path = (@($BinDir) + $currentEntries) -join ';'
+
+Info "Installed sysops to $venvExe"
+Info "Managed sysops directory is first in PATH: $BinDir"
+Info "Close and reopen PowerShell, then run: sysops --help"
