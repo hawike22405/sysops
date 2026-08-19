@@ -17,12 +17,26 @@ def add_ascii_subcommand(subparsers):
     color_group = parser.add_mutually_exclusive_group()
     color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Force 24-bit ANSI color rendering")
     color_group.add_argument("--no-color", dest="color", action="store_false", help="Force plain grayscale character-ramp rendering")
+    parser.add_argument(
+        "--style",
+        choices=["chars", "blocks"],
+        default="chars",
+        help="Color rendering style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells",
+    )
     parser.set_defaults(func=_run_ascii)
 
 
 def _run_ascii(args):
     try:
-        print(render_ascii(args.image, width=args.width, invert=args.invert, color=args.color))
+        print(
+            render_ascii(
+                args.image,
+                width=args.width,
+                invert=args.invert,
+                color=args.color,
+                style=args.style,
+            )
+        )
     except (UnsupportedImageError, ValueError) as exc:
         print(f"Error: {exc}")
         raise SystemExit(1)
@@ -38,6 +52,12 @@ def add_logo_subcommand(subparsers):
     color_group = set_parser.add_mutually_exclusive_group()
     color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Always render this logo in 24-bit ANSI color")
     color_group.add_argument("--no-color", dest="color", action="store_false", help="Always render this logo in plain grayscale")
+    set_parser.add_argument(
+        "--style",
+        choices=["chars", "blocks"],
+        default=None,
+        help="Color rendering style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells",
+    )
     set_parser.set_defaults(func=_run_logo_set)
 
     clear_parser = logo_sub.add_parser("clear", help="Remove the saved logo and revert to the built-in OS logo")
@@ -67,6 +87,8 @@ def _run_logo_set(args):
         cfg["width"] = args.width
     if args.color is not None:
         cfg["color"] = args.color
+    if args.style is not None:
+        cfg["style"] = args.style
     save_config(cfg)
 
     print(f"Saved default logo: {cfg['image']}")
@@ -74,6 +96,8 @@ def _run_logo_set(args):
         print(f"  width: {cfg['width']}")
     if "color" in cfg:
         print(f"  color: {cfg['color']}")
+    if "style" in cfg:
+        print(f"  style: {cfg['style']}")
     print("Run 'sysops' to see it, or 'sysops logo clear' to revert to the OS logo.")
 
 
@@ -85,6 +109,7 @@ def _run_logo_clear(_args):
     cfg.pop("image", None)
     cfg.pop("width", None)
     cfg.pop("color", None)
+    cfg.pop("style", None)
     save_config(cfg)
     print("Cleared custom logo. 'sysops' will show the built-in OS logo again.")
 
@@ -97,6 +122,7 @@ def _run_logo_show(_args):
     print(f"Image: {cfg['image']}")
     print(f"Width: {cfg.get('width', 28)} (default: 28)")
     print(f"Color: {cfg.get('color', 'auto')}")
+    print(f"Style: {cfg.get('style', 'chars')} (default: chars)")
     print(f"Config file: {config_path()}")
 
 
@@ -120,6 +146,12 @@ def build_parser():
     logo_color_group = parser.add_mutually_exclusive_group()
     logo_color_group.add_argument("--logo-color", dest="logo_color", action="store_true", default=None, help="Force 24-bit ANSI color for the logo")
     logo_color_group.add_argument("--no-logo-color", dest="logo_color", action="store_false", help="Force plain grayscale logo")
+    parser.add_argument(
+        "--logo-style",
+        choices=["chars", "blocks"],
+        default=None,
+        help="Logo color style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells",
+    )
 
     subparsers = parser.add_subparsers(dest="command")
     add_ascii_subcommand(subparsers)
@@ -158,8 +190,9 @@ def main():
         image = args.image if args.image is not None else cfg.get("image")
         width = args.logo_width if args.logo_width is not None else cfg.get("width", 28)
         color = args.logo_color if args.logo_color is not None else cfg.get("color")
+        style = args.logo_style if args.logo_style is not None else cfg.get("style", "chars")
         try:
-            return render_ascii(image, width=width, color=color)
+            return render_ascii(image, width=width, color=color, style=style)
         except (UnsupportedImageError, ValueError) as exc:
             print(f"Warning: couldn't render logo: {exc}")
             return None
