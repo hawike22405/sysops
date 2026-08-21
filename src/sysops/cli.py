@@ -7,6 +7,7 @@ from .config import config_path, load_config, save_config
 from .dino import run_game
 from .features.achievements import check_achievements, list_all_badges
 from .features.benchmark import print_results, run_benchmark
+from .features.htop_view import run_htop_view
 from .features.interactive_menu import run_interactive_menu
 from .features.updater import run_update
 from .output import render_json, render_pretty
@@ -105,6 +106,19 @@ def add_dashboard_subcommand(subparsers):
     parser.set_defaults(func=lambda _args: run_interactive_menu())
 
 
+def add_htop_subcommand(subparsers):
+    parser = subparsers.add_parser("htop", help="Open the htop-style live system monitor")
+    parser.add_argument("--refresh", type=float, default=1.5, help="Screen redraw interval in seconds (default: 1.5)")
+    parser.add_argument("--sort", choices=["cpu", "mem", "pid", "name"], default="cpu", help="Initial process sort order")
+    parser.set_defaults(func=_run_htop)
+
+
+def _run_htop(args):
+    if args.refresh <= 0:
+        raise SystemExit("Error: --refresh must be greater than 0")
+    run_htop_view(refresh_seconds=args.refresh, sort_key=args.sort)
+
+
 def add_benchmark_subcommand(subparsers):
     parser = subparsers.add_parser("benchmark", help="Run a quick CPU and disk benchmark")
     parser.add_argument("--duration", type=float, default=0.33, help="Seconds per benchmark stage")
@@ -159,6 +173,7 @@ def build_parser():
     add_logo_subcommand(subparsers)
     add_play_subcommand(subparsers)
     add_dashboard_subcommand(subparsers)
+    add_htop_subcommand(subparsers)
     add_benchmark_subcommand(subparsers)
     add_achievements_subcommand(subparsers)
     add_update_subcommand(subparsers)
@@ -180,7 +195,7 @@ def main():
         else:
             parser.error("usage: sysops logo {set,clear,show}")
         return
-    if args.command in {"dashboard", "menu", "benchmark", "achievements", "update"}:
+    if args.command in {"dashboard", "menu", "htop", "benchmark", "achievements", "update"}:
         result = args.func(args)
         if args.command == "update" and result:
             raise SystemExit(result)
