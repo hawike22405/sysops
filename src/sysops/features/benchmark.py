@@ -71,9 +71,7 @@ def benchmark_cpu_multi(duration=0.33):
     for process in processes:
         process.join()
 
-    total_ops = 0
-    while not queue.empty():
-        total_ops += queue.get()
+    total_ops = sum(queue.get() for _ in processes)
     queue.close()
     queue.join_thread()
     return {"cores_used": cores, "ops": total_ops, "ops_per_sec": int(total_ops / max(duration, 1e-9))}
