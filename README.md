@@ -135,6 +135,69 @@ Run a short CPU and disk benchmark without installing another benchmarking packa
 sysops benchmark
 ```
 
+The benchmark reports:
+
+- Sequential temporary-file write throughput in MB/s
+- Sequential temporary-file read throughput in MB/s
+- Single-core CPU operations per second
+- Multi-core CPU operations per second
+
+Adjust the duration or skip the multi-core stage:
+
+```bash
+sysops benchmark --duration 0.5
+sysops benchmark --no-multi
+```
+
+The benchmark uses a temporary file and removes it when the test finishes. Results are intended for quick relative comparisons, not hardware certification or storage endurance testing.
+
+## Achievements
+
+SysOps can unlock persistent badges based on the current machine's hardware and uptime:
+
+```bash
+sysops achievements
+sysops achievements --list
+```
+
+Examples include `Day One`, `Week Streak`, `Century Club`, `Quad Squad`, `Core Hoarder`, `Memory Lane`, `Modest Machine`, and `Disk Collector`.
+
+Unlocked badges are stored locally in:
+
+```text
+~/.sysops_achievements.json
+```
+
+No achievement data is sent to a server.
+
+## Game
+
+Open a live terminal dashboard with automatic refresh and single-key controls:
+
+```bash
+sysops dashboard
+# alias:
+sysops menu
+```
+
+Controls:
+
+- `h` — toggle extended statistics such as load, memory, swap, disk usage, process count, and kernel
+- `t` — cycle `default`, `dark`, and `mono` themes
+- `c` — copy the displayed statistics to the clipboard when `wl-copy`, `xclip`, `xsel`, `pbcopy`, or `clip.exe` is available
+- `r` — force a refresh
+- `q` — quit
+
+The dashboard is implemented with the Python standard library and supports POSIX terminals plus Windows consoles.
+
+## Benchmark
+
+Run a short CPU and disk benchmark without installing another benchmarking package:
+
+```bash
+sysops benchmark
+```
+
 The benchmark reports sequential temporary-file write/read throughput and single/multi-core CPU operations per second.
 
 ```bash
@@ -220,6 +283,14 @@ sysops [OPTIONS]
 ### Feature commands
 
 ```text
+sysops dashboard [alias: menu]
+sysops benchmark [--duration N] [--no-multi]
+sysops achievements [--list]
+```
+
+### ASCII image command
+
+```text
 sysops update
 sysops dashboard [alias: menu]
 sysops benchmark [--duration N] [--no-multi]
@@ -234,6 +305,76 @@ sysops logo show
 sysops logo clear
 ```
 
+`logo set` accepts:
+
+```text
+--width N
+--color
+--no-color
+```
+
+## Examples
+
+Show system information with the built-in logo:
+
+```bash
+sysops
+```
+
+Open the live dashboard:
+
+```bash
+sysops dashboard
+```
+
+Run a quick hardware benchmark:
+
+```bash
+sysops benchmark
+```
+
+Check for newly unlocked badges:
+
+```bash
+sysops achievements
+```
+
+List every badge:
+
+```bash
+sysops achievements --list
+```
+
+Use a custom image for one run:
+
+```bash
+sysops --image ./logo.png --logo-width 24
+```
+
+Save an image as the default logo:
+
+```bash
+sysops logo set ./logo.png --width 24 --color
+```
+
+Render an image as truecolor ASCII art:
+
+```bash
+sysops ascii ./logo.png --width 80 --color
+```
+
+Render a grayscale inverted version:
+
+```bash
+sysops ascii ./logo.png --width 80 --no-color --invert
+```
+
+Return to the built-in OS logo:
+
+```bash
+sysops logo clear
+```
+
 ## Requirements
 
 - Python 3
@@ -241,6 +382,7 @@ sysops logo clear
 - Pillow for image rendering
 - Rich for the terminal interface
 
+The new dashboard, benchmark, and achievement modules use only the Python standard library.
 The dashboard, benchmark, achievement, and updater modules use only the Python standard library.
 
 See `docs/DESIGN.md` for design notes and roadmap.
