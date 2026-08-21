@@ -8,16 +8,17 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import List, Optional, Tuple
 
 BRANCH = "main"
 
 
-def _run(command: list[str], cwd: Path | None = None) -> tuple[int, str]:
+def _run(command: List[str], cwd: Optional[Path] = None) -> Tuple[int, str]:
     result = subprocess.run(command, cwd=cwd, text=True, capture_output=True)
     return result.returncode, (result.stdout + result.stderr).strip()
 
 
-def _source_checkout() -> Path | None:
+def _source_checkout() -> Optional[Path]:
     """Find the source directory recorded by pip's direct_url metadata."""
     try:
         from importlib.metadata import distribution
