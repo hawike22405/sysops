@@ -17,6 +17,7 @@ A modern, terminal-first system information reporter with a Fastfetch/Neofetch-s
 - Interactive live dashboard
 - Quick CPU and disk benchmark
 - Persistent system achievement badges
+- One-command self-update
 - No privileged operations by default
 
 ## Installation
@@ -33,7 +34,7 @@ curl -fsSL https://raw.githubusercontent.com/hawike22405/sysops/main/install.sh 
 irm https://raw.githubusercontent.com/hawike22405/sysops/main/install.ps1 | iex
 ```
 
-The Windows installer creates an isolated virtual environment, installs the latest source from `main`, verifies that the `ascii` command is available, and creates the `sysops` launcher.
+The installers create an isolated virtual environment, fetch the latest source from `main`, install the required dependencies, and create the `sysops` launcher. The source checkout is retained so `sysops update` can update it in place.
 
 After installation, open a new terminal and run:
 
@@ -63,6 +64,30 @@ cd sysops
 make install
 make run
 ```
+
+## Updating SysOps
+
+After the initial installation, update the local installation with:
+
+```bash
+sysops update
+```
+
+SysOps checks the remote `main` branch before changing anything. If the installed source is already at the latest commit, it reports:
+
+```text
+SysOps is already up to date. No further actions needed.
+```
+
+If a developer has pushed changes, it automatically:
+
+1. Fetches the latest source.
+2. Downloads the changes with a fast-forward-only Git update.
+3. Installs the updated package into the existing isolated virtual environment.
+4. Applies any changed Python package dependencies through pip.
+5. Reports whether the update completed successfully.
+
+The updater does not use `sudo`, does not modify system Python packages, and does not replace the virtual environment on every update. If the managed source checkout cannot be found, it asks you to rerun the official installer rather than making potentially unsafe changes.
 
 ## Basic Usage
 
@@ -147,8 +172,53 @@ No achievement data is sent to a server.
 
 ## Game
 
-You can also play the Chrome-offline-style Dino runner directly in your
-terminal. Jump over cacti and duck under flying pterodactyls to score points:
+Open a live terminal dashboard with automatic refresh and single-key controls:
+
+```bash
+sysops dashboard
+# alias:
+sysops menu
+```
+
+Controls:
+
+- `h` — toggle extended statistics such as load, memory, swap, disk usage, process count, and kernel
+- `t` — cycle `default`, `dark`, and `mono` themes
+- `c` — copy the displayed statistics to the clipboard when `wl-copy`, `xclip`, `xsel`, `pbcopy`, or `clip.exe` is available
+- `r` — force a refresh
+- `q` — quit
+
+The dashboard is implemented with the Python standard library and supports POSIX terminals plus Windows consoles.
+
+## Benchmark
+
+Run a short CPU and disk benchmark without installing another benchmarking package:
+
+```bash
+sysops benchmark
+```
+
+The benchmark reports sequential temporary-file write/read throughput and single/multi-core CPU operations per second.
+
+```bash
+sysops benchmark --duration 0.5
+sysops benchmark --no-multi
+```
+
+## Achievements
+
+SysOps can unlock persistent badges based on the current machine's hardware and uptime:
+
+```bash
+sysops achievements
+sysops achievements --list
+```
+
+Unlocked badges are stored locally in `~/.sysops_achievements.json`. No achievement data is sent to a server.
+
+## Game
+
+You can also play the Chrome-offline-style Dino runner directly in your terminal:
 
 ```bash
 sysops play
@@ -157,151 +227,35 @@ sysops --play
 ```
 
 Controls:
-- `SPACE` / `UP` / `W`: Jump (hold for variable jump height)
+- `SPACE` / `UP` / `W`: Jump
 - `DOWN` / `S` / `,`: Duck
 - `P`: Pause / Resume
-- `SPACE` / `R`: Start / Restart game
+- `SPACE` / `R`: Start / Restart
 - `Q`: Quit
-
-Features:
-- Start screen with countdown
-- Animated Dino (2-frame run cycle, eye blinking, ducking poses)
-- Pterodactyls, clouds, stars, and day/night cycle
-- High score persistence saved to `~/.config/sysops/dino_highscore.json`
-- Smooth ground scrolling, stats scoreboard, and time-based physics
-- Safe terminal size guards & resize handling
-
-On Windows, install `windows-curses` first (`pip install windows-curses`).
 
 ## ASCII Art
 
 By default, `sysops` displays a built-in operating-system logo beside the system information panels.
 
-### Use an image once
-
-Pass an image with `--image`:
-
-```powershell
-sysops --image "D:\Opera Downloads\marshmello-material-3840x2160-26106.png"
-```
-
-Control the logo width:
-
-```powershell
-sysops --image "D:\Opera Downloads\marshmello-material-3840x2160-26106.png" --logo-width 24
-```
-
-Disable the logo completely:
+Use an image once:
 
 ```bash
-sysops --no-logo
+sysops --image ./logo.png --logo-width 24
 ```
 
-### Logo color controls
-
-Automatic color detection is used by default. You can override it:
+Save a persistent custom logo:
 
 ```bash
-sysops --logo-color
-sysops --no-logo-color
-```
-
-These options control the logo displayed beside the system summary.
-
-## Persistent Custom Logo
-
-You can save an image as your default logo so you do not need to pass `--image` every time.
-
-### Set the default logo
-
-```powershell
-sysops logo set "D:\Opera Downloads\marshmello-material-3840x2160-26106.png" --width 24 --color
-```
-
-Now simply run:
-
-```bash
-sysops
-```
-
-The saved image, width, and color preference will be used automatically.
-
-### View the saved logo configuration
-
-```bash
+sysops logo set ./logo.png --width 24 --color
 sysops logo show
-```
-
-### Remove the custom logo
-
-```bash
 sysops logo clear
 ```
 
-After clearing it, `sysops` returns to the built-in OS logo.
-
-### Configuration location
-
-On Windows, the configuration is stored at:
-
-```text
-%APPDATA%\sysops\config.json
-```
-
-On Linux/macOS it is stored under the XDG configuration directory, normally:
-
-```text
-~/.config/sysops/config.json
-```
-
-The configuration is plain JSON and can be inspected or edited manually.
-
-## ASCII Art
-
-`sysops ascii` converts an image into terminal-rendered ASCII art.
-
-### Render an uploaded or local image
-
-Copy or download an image somewhere accessible from the terminal, then run:
-
-```powershell
-sysops ascii "D:\Opera Downloads\marshmello-material-3840x2160-26106.png"
-```
-
-Common formats such as PNG, JPG, BMP, GIF, and WEBP are handled by Pillow.
-
-### Control the size
+`sysops ascii` converts images into terminal-rendered ASCII art:
 
 ```bash
-sysops ascii image.png --width 120
-```
-
-### Force truecolor rendering
-
-```bash
-sysops ascii image.png --color
-```
-
-This uses 24-bit ANSI colors and half-block characters for a higher-resolution, Fastfetch-style terminal image.
-
-### Force plain grayscale rendering
-
-```bash
-sysops ascii image.png --no-color
-```
-
-### Invert grayscale output
-
-`--invert` applies to the plain character-ramp renderer:
-
-```bash
-sysops ascii image.png --no-color --invert
-```
-
-### Show the built-in OS logo
-
-```bash
-sysops ascii
+sysops ascii ./logo.png --width 80 --color
+sysops ascii ./logo.png --width 80 --no-color --invert
 ```
 
 ## Command Reference
@@ -312,21 +266,19 @@ sysops ascii
 sysops [OPTIONS]
 ```
 
-Important options:
-
 | Option | Description |
 |---|---|
 | `--format {pretty,json,compact}` | Select output format |
 | `--detail {brief,full}` | Select detail level |
 | `--output, -o PATH` | Write output to a file |
 | `--modules MODULES` | Run selected comma-separated modules |
-| `--watch SECONDS` | Repeat the report at an interval |
+| `--watch SECONDS` | Repeat at an interval |
 | `--no-root` | Disable privileged probes |
 | `--image PATH` | Use a custom image as the logo |
-| `--logo-width N` | Set logo width in terminal characters |
+| `--logo-width N` | Set logo width |
 | `--no-logo` | Hide the logo |
-| `--logo-color` | Force 24-bit color for the logo |
-| `--no-logo-color` | Force grayscale for the logo |
+| `--logo-color` | Force 24-bit color |
+| `--no-logo-color` | Force grayscale |
 
 ### Feature commands
 
@@ -339,15 +291,11 @@ sysops achievements [--list]
 ### ASCII image command
 
 ```text
-sysops ascii [IMAGE] [OPTIONS]
+sysops update
+sysops dashboard [alias: menu]
+sysops benchmark [--duration N] [--no-multi]
+sysops achievements [--list]
 ```
-
-| Option | Description |
-|---|---|
-| `--width N` | ASCII output width |
-| `--invert` | Invert the grayscale character ramp |
-| `--color` | Force 24-bit ANSI color rendering |
-| `--no-color` | Force plain grayscale rendering |
 
 ### Persistent logo commands
 
@@ -430,9 +378,11 @@ sysops logo clear
 ## Requirements
 
 - Python 3
+- Git for the `sysops update` command
 - Pillow for image rendering
 - Rich for the terminal interface
 
 The new dashboard, benchmark, and achievement modules use only the Python standard library.
+The dashboard, benchmark, achievement, and updater modules use only the Python standard library.
 
 See `docs/DESIGN.md` for design notes and roadmap.
