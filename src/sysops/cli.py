@@ -10,7 +10,7 @@ from .features.benchmark import print_results, run_benchmark
 from .features.htop_view import run_htop_view
 from .features.interactive_menu import run_interactive_menu
 from .features.updater import run_update
-from .output import render_json, render_pretty
+from .output import render, render_json
 from .probes import collect_all
 
 
@@ -106,14 +106,14 @@ def add_dashboard_subcommand(subparsers):
     parser.set_defaults(func=lambda _args: run_interactive_menu())
 
 
-def add_htop_subcommand(subparsers):
-    parser = subparsers.add_parser("htop", help="Open the htop-style live system monitor")
+def add_monitor_subcommand(subparsers):
+    parser = subparsers.add_parser("monitor", aliases=["htop"], help="Open the htop-style live system monitor")
     parser.add_argument("--refresh", type=float, default=1.5, help="Screen redraw interval in seconds (default: 1.5)")
     parser.add_argument("--sort", choices=["cpu", "mem", "pid", "name"], default="cpu", help="Initial process sort order")
-    parser.set_defaults(func=_run_htop)
+    parser.set_defaults(func=_run_monitor)
 
 
-def _run_htop(args):
+def _run_monitor(args):
     if args.refresh <= 0:
         raise SystemExit("Error: --refresh must be greater than 0")
     run_htop_view(refresh_seconds=args.refresh, sort_key=args.sort)
@@ -154,9 +154,8 @@ def add_update_subcommand(subparsers):
 
 def build_parser():
     parser = argparse.ArgumentParser(prog="sysops", description="System spec reporter")
-    parser.add_argument("--format", choices=["pretty", "json", "compact"], default="pretty", help="output format")
     parser.add_argument("--detail", choices=["brief", "full"], default="brief", help="detail level")
-    parser.add_argument("--output", "-o", help="write output to file")
+    parser.add_argument("--output", "-o", help="write JSON output to a file")
     parser.add_argument("--modules", help="comma-separated modules to run")
     parser.add_argument("--watch", type=int, help="repeat every N seconds")
     parser.add_argument("--no-root", action="store_true", help="do not attempt privileged probes")
@@ -173,7 +172,7 @@ def build_parser():
     add_logo_subcommand(subparsers)
     add_play_subcommand(subparsers)
     add_dashboard_subcommand(subparsers)
-    add_htop_subcommand(subparsers)
+    add_monitor_subcommand(subparsers)
     add_benchmark_subcommand(subparsers)
     add_achievements_subcommand(subparsers)
     add_update_subcommand(subparsers)
@@ -195,7 +194,7 @@ def main():
         else:
             parser.error("usage: sysops logo {set,clear,show}")
         return
-    if args.command in {"dashboard", "menu", "htop", "benchmark", "achievements", "update"}:
+    if args.command in {"dashboard", "menu", "monitor", "htop", "benchmark", "achievements", "update"}:
         result = args.func(args)
         if args.command == "update" and result:
             raise SystemExit(result)
@@ -206,31 +205,20 @@ def main():
         modules = [item.strip() for item in args.modules.split(",") if item.strip()]
     data = collect_all(detail=args.detail, modules=modules, no_root=args.no_root)
 
-    def build_logo():
-        if args.no_logo:
-            return None
+    logo = None
+    if not args.no_logo:
         cfg = load_config()
         image = args.image if args.image is not None else cfg.get("image")
         width = args.logo_width if args.logo_width is not None else cfg.get("width", 28)
         color = args.logo_color if args.logo_color is not None else cfg.get("color")
         style = args.logo_style if args.logo_style is not None else cfg.get("style", "chars")
         try:
-            return render_ascii(image, width=width, color=color, style=style)
+            logo = render_ascii(image, width=width, color=color, style=style)
         except (UnsupportedImageError, ValueError) as exc:
             print(f"Warning: couldn't render logo: {exc}")
-            return None
 
-    out_text = None
-    if args.format == "pretty":
-        render_pretty(data, detail=args.detail, logo=build_logo())
-    elif args.format == "compact":
-        render_pretty(data, detail="brief", logo=build_logo())
-    else:
-        out_text = render_json(data)
-        print(out_text)
+    render(data)
+
     if args.output:
-        path = Path(args.output)
-        if out_text is None:
-            out_text = json.dumps(data, indent=2)
-        path.write_text(out_text, encoding="utf-8")
-        print(f"Wrote output to {path}")
+        Path(args.output).write_text(render_json(data), encoding="utf-8")
+        print(f"Wrote JSON output to {args.output}")
