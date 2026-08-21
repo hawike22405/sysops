@@ -85,13 +85,25 @@ def _build_mem_panel() -> Panel:
     return Panel(table, title="Memory", border_style="magenta")
 
 
+_PSEUDO_PROCESS_NAMES = {"system idle process", "system"}
+_CPU_COUNT = psutil.cpu_count(logical=True) or 1
+
+
 def _build_process_table(sort: SortMode) -> Panel:
     procs = []
     for process in psutil.process_iter(attrs=["pid", "name", "cpu_percent", "memory_percent", "username"]):
         try:
-            procs.append(process.info)
+            info = process.info
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
+
+        name = (info.get("name") or "").strip().lower()
+        if name in _PSEUDO_PROCESS_NAMES:
+            continue
+
+        raw_cpu = info.get("cpu_percent") or 0.0
+        info["cpu_percent"] = min(raw_cpu / _CPU_COUNT, 100.0)
+        procs.append(info)
 
     key_fn = {
         "cpu": lambda info: info.get("cpu_percent") or 0,
