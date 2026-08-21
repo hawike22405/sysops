@@ -19,9 +19,8 @@ def add_ascii_subcommand(subparsers):
     parser.add_argument("--width", type=int, default=80, help="Output width in characters")
     parser.add_argument("--invert", action="store_true", help="Invert the brightness ramp (plain-text mode only)")
     color_group = parser.add_mutually_exclusive_group()
-    color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Force 24-bit color rendering")
+    color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Force 24-bit ANSI color rendering")
     color_group.add_argument("--no-color", dest="color", action="store_false", help="Force plain grayscale character-ramp rendering")
-    parser.add_argument("--style", choices=["chars", "blocks"], default="chars", help="Color rendering style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells")
     parser.add_argument("--style", choices=["chars", "blocks"], default="chars", help="Color rendering style")
     parser.set_defaults(func=_run_ascii)
 
@@ -43,9 +42,6 @@ def add_logo_subcommand(subparsers):
     color_group = set_parser.add_mutually_exclusive_group()
     color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Always render this logo in 24-bit ANSI color")
     color_group.add_argument("--no-color", dest="color", action="store_false", help="Always render this logo in plain grayscale")
-    set_parser.add_argument("--style", choices=["chars", "blocks"], default=None, help="Color rendering style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells")
-    color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Always render this logo in color")
-    color_group.add_argument("--no-color", dest="color", action="store_false", help="Always render this logo in grayscale")
     set_parser.add_argument("--style", choices=["chars", "blocks"], default=None, help="Color rendering style")
     set_parser.set_defaults(func=_run_logo_set)
     clear_parser = logo_sub.add_parser("clear", help="Remove the saved logo")
@@ -111,7 +107,6 @@ def add_dashboard_subcommand(subparsers):
 
 def add_benchmark_subcommand(subparsers):
     parser = subparsers.add_parser("benchmark", help="Run a quick CPU and disk benchmark")
-    parser.add_argument("--duration", type=float, default=0.33, help="Seconds per benchmark stage (default: 0.33)")
     parser.add_argument("--duration", type=float, default=0.33, help="Seconds per benchmark stage")
     parser.add_argument("--no-multi", action="store_true", help="Skip the multi-core CPU benchmark")
     parser.set_defaults(func=_run_benchmark)
@@ -158,10 +153,6 @@ def build_parser():
     logo_color_group = parser.add_mutually_exclusive_group()
     logo_color_group.add_argument("--logo-color", dest="logo_color", action="store_true", default=None, help="Force 24-bit ANSI color for the logo")
     logo_color_group.add_argument("--no-logo-color", dest="logo_color", action="store_false", help="Force plain grayscale logo")
-    parser.add_argument("--logo-style", choices=["chars", "blocks"], default=None, help="Logo color style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells")
-
-    logo_color_group.add_argument("--logo-color", dest="logo_color", action="store_true", default=None, help="Force 24-bit color for the logo")
-    logo_color_group.add_argument("--no-logo-color", dest="logo_color", action="store_false", help="Force grayscale for the logo")
     parser.add_argument("--logo-style", choices=["chars", "blocks"], default=None, help="Logo color style")
     subparsers = parser.add_subparsers(dest="command")
     add_ascii_subcommand(subparsers)
@@ -189,8 +180,6 @@ def main():
         else:
             parser.error("usage: sysops logo {set,clear,show}")
         return
-    if args.command in {"dashboard", "menu", "benchmark", "achievements"}:
-        args.func(args)
     if args.command in {"dashboard", "menu", "benchmark", "achievements", "update"}:
         result = args.func(args)
         if args.command == "update" and result:
