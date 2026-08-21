@@ -8,7 +8,7 @@ from .dino import run_game
 from .features.achievements import check_achievements, list_all_badges
 from .features.benchmark import print_results, run_benchmark
 from .features.interactive_menu import run_interactive_menu
-from .features.updater import update
+from .features.updater import run_update
 from .output import render_json, render_pretty
 from .probes import collect_all
 
@@ -135,7 +135,7 @@ def _run_achievements(args):
 
 def add_update_subcommand(subparsers):
     parser = subparsers.add_parser("update", help="Check for and install the latest SysOps update")
-    parser.set_defaults(func=lambda _args: update())
+    parser.set_defaults(func=lambda _args: run_update())
 
 
 def build_parser():

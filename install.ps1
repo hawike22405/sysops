@@ -86,13 +86,7 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to install sysops" }
 
 New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 
-$venvExe = Join-Path $VenvDir "Scripts\sysops.exe"
-if (-not (Test-Path $venvExe)) {
-    Err "Install finished but $venvExe was not found."
-    exit 1
-}
-
-$asciiCheck = & $venvPython -c "from sysops.cli import build_parser; p=build_parser(); choices=[a.choices for a in p._actions if hasattr(a, 'choices') and isinstance(a.choices, dict)]; print('ascii' in next((c for c in choices if isinstance(c, dict)), {}))"
+$asciiCheck = & $venvPython -c "import sysops; from sysops.cli import build_parser; build_parser(); print(sysops.__file__)"
 if ($LASTEXITCODE -ne 0) {
     throw "Could not verify the installed sysops CLI"
 }
@@ -100,9 +94,19 @@ if ($LASTEXITCODE -ne 0) {
 $shimPath = Join-Path $BinDir "sysops.cmd"
 $shimContent = @"
 @echo off
-"$venvExe" %*
+"$venvPython" -m sysops %*
 "@
 Set-Content -Path $shimPath -Value $shimContent -Encoding ASCII -Force
+
+$legacyExe = Join-Path $BinDir "sysops.exe"
+if (Test-Path $legacyExe) {
+    try {
+        Remove-Item -Force $legacyExe
+        Info "Removed stale sysops.exe launcher"
+    } catch {
+        Warn "Could not remove stale launcher: $legacyExe"
+    }
+}
 
 # Remove stale launchers that can shadow the managed sysops command.
 $staleLocations = @(
@@ -136,6 +140,6 @@ $currentEntries = $env:Path -split ';' | Where-Object {
 }
 $env:Path = (@($BinDir) + $currentEntries) -join ';'
 
-Info "Installed sysops to $venvExe"
+Info "Installed sysops to $BinDir\sysops.cmd"
 Info "Managed sysops directory is first in PATH: $BinDir"
 Info "Close and reopen PowerShell, then run: sysops --help"
