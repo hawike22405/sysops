@@ -5,6 +5,9 @@ from pathlib import Path
 from .ascii_art import UnsupportedImageError, render_ascii
 from .config import config_path, load_config, save_config
 from .dino import run_game
+from .features.achievements import check_achievements, list_all_badges
+from .features.benchmark import print_results, run_benchmark
+from .features.interactive_menu import run_interactive_menu
 from .output import render_json, render_pretty
 from .probes import collect_all
 
@@ -17,26 +20,13 @@ def add_ascii_subcommand(subparsers):
     color_group = parser.add_mutually_exclusive_group()
     color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Force 24-bit ANSI color rendering")
     color_group.add_argument("--no-color", dest="color", action="store_false", help="Force plain grayscale character-ramp rendering")
-    parser.add_argument(
-        "--style",
-        choices=["chars", "blocks"],
-        default="chars",
-        help="Color rendering style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells",
-    )
+    parser.add_argument("--style", choices=["chars", "blocks"], default="chars", help="Color rendering style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells")
     parser.set_defaults(func=_run_ascii)
 
 
 def _run_ascii(args):
     try:
-        print(
-            render_ascii(
-                args.image,
-                width=args.width,
-                invert=args.invert,
-                color=args.color,
-                style=args.style,
-            )
-        )
+        print(render_ascii(args.image, width=args.width, invert=args.invert, color=args.color, style=args.style))
     except (UnsupportedImageError, ValueError) as exc:
         print(f"Error: {exc}")
         raise SystemExit(1)
@@ -52,12 +42,7 @@ def add_logo_subcommand(subparsers):
     color_group = set_parser.add_mutually_exclusive_group()
     color_group.add_argument("--color", dest="color", action="store_true", default=None, help="Always render this logo in 24-bit ANSI color")
     color_group.add_argument("--no-color", dest="color", action="store_false", help="Always render this logo in plain grayscale")
-    set_parser.add_argument(
-        "--style",
-        choices=["chars", "blocks"],
-        default=None,
-        help="Color rendering style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells",
-    )
+    set_parser.add_argument("--style", choices=["chars", "blocks"], default=None, help="Color rendering style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells")
     set_parser.set_defaults(func=_run_logo_set)
 
     clear_parser = logo_sub.add_parser("clear", help="Remove the saved logo and revert to the built-in OS logo")
@@ -131,6 +116,39 @@ def add_play_subcommand(subparsers):
     parser.set_defaults(func=lambda _args: run_game())
 
 
+def add_dashboard_subcommand(subparsers):
+    parser = subparsers.add_parser("dashboard", aliases=["menu"], help="Open the live interactive system dashboard")
+    parser.set_defaults(func=lambda _args: run_interactive_menu())
+
+
+def add_benchmark_subcommand(subparsers):
+    parser = subparsers.add_parser("benchmark", help="Run a quick CPU and disk benchmark")
+    parser.add_argument("--duration", type=float, default=0.33, help="Seconds per benchmark stage (default: 0.33)")
+    parser.add_argument("--no-multi", action="store_true", help="Skip the multi-core CPU benchmark")
+    parser.set_defaults(func=_run_benchmark)
+
+
+def _run_benchmark(args):
+    if args.duration <= 0:
+        raise SystemExit("Error: --duration must be greater than 0")
+    print_results(run_benchmark(args.duration, include_multi_core=not args.no_multi))
+
+
+def add_achievements_subcommand(subparsers):
+    parser = subparsers.add_parser("achievements", help="Check or list system achievement badges")
+    parser.add_argument("--list", action="store_true", help="List all badges and their status")
+    parser.set_defaults(func=_run_achievements)
+
+
+def _run_achievements(args):
+    if args.list:
+        list_all_badges()
+        return
+    found = check_achievements()
+    if not found:
+        print("No new achievements this run.")
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="sysops", description="System spec reporter (prototype)")
     parser.add_argument("--format", choices=["pretty", "json", "compact"], default="pretty", help="output format")
@@ -146,17 +164,15 @@ def build_parser():
     logo_color_group = parser.add_mutually_exclusive_group()
     logo_color_group.add_argument("--logo-color", dest="logo_color", action="store_true", default=None, help="Force 24-bit ANSI color for the logo")
     logo_color_group.add_argument("--no-logo-color", dest="logo_color", action="store_false", help="Force plain grayscale logo")
-    parser.add_argument(
-        "--logo-style",
-        choices=["chars", "blocks"],
-        default=None,
-        help="Logo color style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells",
-    )
+    parser.add_argument("--logo-style", choices=["chars", "blocks"], default=None, help="Logo color style: 'chars' for colored ASCII glyphs, 'blocks' for half-block cells")
 
     subparsers = parser.add_subparsers(dest="command")
     add_ascii_subcommand(subparsers)
     add_logo_subcommand(subparsers)
     add_play_subcommand(subparsers)
+    add_dashboard_subcommand(subparsers)
+    add_benchmark_subcommand(subparsers)
+    add_achievements_subcommand(subparsers)
     return parser
 
 
@@ -175,6 +191,9 @@ def main():
             args.func(args)
         else:
             parser.error("usage: sysops logo {set,clear,show}")
+        return
+    if args.command in {"dashboard", "menu", "benchmark", "achievements"}:
+        args.func(args)
         return
 
     modules = None
