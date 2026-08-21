@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live terminal dashboard for quick system statistics."""
+"""Live cross-platform terminal dashboard for quick system statistics."""
 
 import os
 import platform
@@ -24,20 +24,97 @@ def _run(command):
         return "N/A"
 
 
+def _fmt_bytes(value):
+    if value is None:
+        return "N/A"
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return "N/A"
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if abs(value) < 1024 or unit == "TB":
+            return f"{value:.1f} {unit}"
+        value /= 1024
+    return "N/A"
+
+
+def _windows_memory():
+    value = _run("powershell -NoProfile -NonInteractive -Command \"$m=Get-CimInstance Win32_OperatingSystem; Write-Output ($m.TotalVisibleMemorySize*1024) ; Write-Output ($m.FreePhysicalMemory*1024)\"")
+    parts = value.splitlines()
+    if len(parts) >= 2:
+        try:
+            total = float(parts[0])
+            free = float(parts[1])
+            used = max(total - free, 0)
+            return f"{_fmt_bytes(used)} / {_fmt_bytes(total)}"
+        except ValueError:
+            pass
+    return "N/A"
+
+
+def _windows_uptime():
+    value = _run("powershell -NoProfile -NonInteractive -Command \"(Get-Date) - (Get-CimInstance Win32_OperatingSystem).LastBootUpTime | Select-Object -ExpandProperty TotalSeconds\"")
+    try:
+        seconds = float(value)
+    except ValueError:
+        return "N/A"
+    days, rem = divmod(int(seconds), 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes = rem // 60
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours or days:
+        parts.append(f"{hours}h")
+    parts.append(f"{minutes}m")
+    return " ".join(parts)
+
+
+def _windows_disk():
+    value = _run("powershell -NoProfile -NonInteractive -Command \"Get-CimInstance Win32_LogicalDisk -Filter 'DeviceID=\\\"C:\\\"' | ForEach-Object { Write-Output $_.Size; Write-Output ($_.Size-$_.FreeSpace); Write-Output $_.FreeSpace }\"")
+    parts = value.splitlines()
+    if len(parts) >= 2:
+        try:
+            total, used = float(parts[0]), float(parts[1])
+            pct = (used / total * 100) if total else 0
+            return f"{_fmt_bytes(used)} / {_fmt_bytes(total)} ({pct:.0f}%)"
+        except ValueError:
+            pass
+    return "N/A"
+
+
+def _windows_processes():
+    value = _run("powershell -NoProfile -NonInteractive -Command \"(Get-Process).Count\"")
+    return value if value != "N/A" else "N/A"
+
+
 def get_basic_stats():
     uname = platform.uname()
-    return {
+    stats = {
         "Hostname": uname.node,
         "OS": f"{uname.system} {uname.release}",
         "Architecture": uname.machine,
         "CPU cores": str(os.cpu_count() or "N/A"),
-        "Uptime": _run("uptime -p 2>/dev/null || uptime"),
     }
+    if os.name == "nt":
+        stats["Uptime"] = _windows_uptime()
+    else:
+        stats["Uptime"] = _run("uptime -p 2>/dev/null || uptime")
+    return stats
 
 
 def get_hidden_stats():
+    if os.name == "nt":
+        return {
+            "Load average": "N/A (Windows has no POSIX load average)",
+            "Memory": _windows_memory(),
+            "Swap": "N/A (Windows virtual memory)",
+            "Disk (C:)": _windows_disk(),
+            "Processes": _windows_processes(),
+            "Kernel": platform.release(),
+        }
     return {
-        "Load average": _run("cat /proc/loadavg 2>/dev/null"),
+        "Load average": _run("cat /proc/loadavg 2>/dev/null || uptime"),
         "Memory": _run("free -h 2>/dev/null | awk 'NR==2{print $3\"/\"$2}'"),
         "Swap": _run("free -h 2>/dev/null | awk 'NR==3{print $3\"/\"$2}'"),
         "Disk (/)": _run("df -h / 2>/dev/null | awk 'NR==2{print $3\"/\"$2\" (\"$5\")\"}'"),
@@ -75,7 +152,6 @@ def _getch(timeout=0.5):
                 return msvcrt.getwch()
             time.sleep(0.05)
         return None
-
     import termios
     import tty
     fd = sys.stdin.fileno()
@@ -94,16 +170,13 @@ def _render(theme_name, show_hidden, message=""):
     print(f"{theme['header']}=== SysOps Interactive Dashboard ==={theme['reset']}")
     print(f"{theme['label']}Theme:{theme['reset']} {theme['accent']}{theme_name}{theme['reset']}   "
           f"{theme['label']}Hidden stats:{theme['reset']} {theme['accent']}{'ON' if show_hidden else 'OFF'}{theme['reset']}\n")
-
     stats = get_basic_stats()
     if show_hidden:
         stats.update(get_hidden_stats())
-
     lines = []
     for key, value in stats.items():
         print(f"{theme['label']}{key:<18}{theme['reset']} {theme['value']}{value}{theme['reset']}")
         lines.append(f"{key}: {value}")
-
     print(f"\n{theme['label']}[h]{theme['reset']} hidden  "
           f"{theme['label']}[t]{theme['reset']} theme  "
           f"{theme['label']}[c]{theme['reset']} copy  "
