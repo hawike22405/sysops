@@ -1,9 +1,8 @@
 """sysops.output (summary rendering)
 ----------------------------------
 
-Renders the ``sysops`` system summary in one bordered layout. The legacy
-``--format`` variants are intentionally removed; ``render(data)`` is the
-single public rendering entry point.
+Renders the ``sysops`` system summary in one bordered layout, optionally
+placing a generated terminal logo above the panels.
 """
 
 from __future__ import annotations
@@ -19,8 +18,10 @@ from rich.text import Text
 console = Console()
 
 
-def render(data: dict[str, Any]) -> None:
-    """Render the system summary as bordered panels."""
+def render(data: dict[str, Any], logo: str | None = None) -> None:
+    """Render the system summary as bordered panels, with an optional logo."""
+    if logo:
+        console.print(Panel(Text.from_ansi(logo), border_style="cyan", padding=(0, 1)))
     for panel in _build_panels(data):
         console.print(panel)
 
