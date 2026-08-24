@@ -225,14 +225,21 @@ def main():
         cfg = load_config()
         image = args.image if args.image is not None else cfg.get("image")
         width = args.logo_width if args.logo_width is not None else cfg.get("width", 40)
-        color = args.logo_color if args.logo_color is not None else cfg.get("color")
-        style = args.logo_style if args.logo_style is not None else cfg.get("style", "chars")
-        try:
-            logo = render_ascii(image, width=width, color=color, style=style)
-        except (UnsupportedImageError, ValueError) as exc:
-            print(f"Warning: couldn't render logo: {exc}")
-
-    render(data, logo=logo)
+        color = args.logo_color if args.logo_color is not None else cfg.get("color", True)
+        
+        if image:
+            from .output import render_animated
+            render_animated(data, image_path=image, width=width, color=color)
+        else:
+            style = args.logo_style if args.logo_style is not None else cfg.get("style", "chars")
+            try:
+                logo = render_ascii(None, width=width, color=color, style=style)
+            except (UnsupportedImageError, ValueError) as exc:
+                print(f"Warning: couldn't render logo: {exc}")
+                logo = None
+            render(data, logo=logo)
+    else:
+        render(data, logo=None)
 
     if args.output:
         Path(args.output).write_text(render_json(data), encoding="utf-8")

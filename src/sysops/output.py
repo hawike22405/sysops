@@ -259,3 +259,91 @@ def _build_panels(data: dict[str, Any]) -> list[Panel]:
 def render_json(data: dict[str, Any]) -> str:
     import json
     return json.dumps(data, indent=2, ensure_ascii=False)
+
+
+def render_animated(data: dict[str, Any], image_path: str, width: int = 40, color: bool = True) -> None:
+    """Render the dashboard live with a rotating 3D logo until 'q' is pressed."""
+    from rich.live import Live
+    from rich.console import Group
+    from sysops.features.ascii3d.viewer import Viewer, ViewerConfig
+    from sysops.features.ascii3d.image import PreprocessConfig
+    from sysops._input import _getch_nonblocking
+
+    config = ViewerConfig(
+        terminal_width=width,
+        terminal_height=int(width * 0.45),  # Approximate aspect ratio match
+        depth_scale=2.5,
+        use_color=color
+    )
+    viewer = Viewer(config=config)
+    try:
+        viewer.load_image(image_path, PreprocessConfig(width=width))
+    except Exception as exc:
+        console.print(f"[red]Error loading 3D logo: {exc}[/red]")
+        render(data)
+        return
+
+    viewer.pitch = -0.1  # Slight tilt for better 3D effect
+
+    def build_layout() -> Group:
+        # Generate 3D frame
+        logo_ansi = viewer.render_frame()
+        logo_lines = logo_ansi.split("\n")
+        
+        info = _system_info(data)
+        hostname = info.get("hostname", "localhost")
+        info_lines = [
+            f"\x1b[1;36m{hostname}\x1b[0m",
+            "\x1b[36m" + "-" * len(hostname) + "\x1b[0m",
+            f"\x1b[1;36mOS\x1b[0m: {info.get('os', 'N/A')}",
+            f"\x1b[1;36mKernel\x1b[0m: {info.get('kernel', 'N/A')}",
+            f"\x1b[1;36mUptime\x1b[0m: {info.get('uptime', 'N/A')}",
+        ]
+        for key in ("de", "wm", "terminal", "shell"):
+            if info.get(key):
+                info_lines.append(f"\x1b[1;36m{key.upper()}\x1b[0m: {info[key]}")
+
+        cpu = data.get("cpu", {})
+        if cpu.get("model"):
+            info_lines.append(f"\x1b[1;36mCPU\x1b[0m: {cpu['model']}")
+
+        mem = data.get("memory", {})
+        if "total" in mem:
+            info_lines.append(f"\x1b[1;36mMemory\x1b[0m: {mem.get('used')} / {mem.get('total')} ({mem.get('used_pct', '?')}%)")
+        elif "total_bytes" in mem:
+            info_lines.append(f"\x1b[1;36mMemory\x1b[0m: {_format_bytes(mem.get('used_bytes', 0))} / {_format_bytes(mem.get('total_bytes', 0))}")
+
+        gpu = data.get("gpu", {})
+        if isinstance(gpu, list) and gpu:
+            info_lines.append(f"\x1b[1;36mGPU\x1b[0m: {gpu[0].get('name', '')}")
+
+        # Merge side-by-side
+        logo_width = max((len(_strip_ansi(line)) for line in logo_lines), default=0)
+        gap = "    "
+        max_lines = max(len(logo_lines), len(info_lines))
+        merged_lines = []
+        for i in range(max_lines):
+            logo_part = logo_lines[i] if i < len(logo_lines) else ""
+            info_part = info_lines[i] if i < len(info_lines) else ""
+            visible_len = len(_strip_ansi(logo_part))
+            padding = " " * max(0, logo_width - visible_len)
+            merged_lines.append(f"{logo_part}{padding}{gap}{info_part}")
+        
+        top_section = Text.from_ansi("\n".join(merged_lines))
+        panels = _build_panels(data)
+        
+        # Add a help footer
+        footer = Text("\n[ Press 'q' to quit live dashboard ]", style="bold yellow")
+        
+        return Group(top_section, Text(""), *panels, footer)
+
+    with Live(build_layout(), refresh_per_second=15, console=console) as live:
+        while True:
+            # Rotate
+            viewer.yaw += 0.05
+            live.update(build_layout())
+            
+            # Check input
+            key = _getch_nonblocking(timeout=1/15.0)
+            if key and key.lower() == 'q':
+                break
