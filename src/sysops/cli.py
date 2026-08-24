@@ -32,12 +32,12 @@ def add_3d_subcommand(subparsers):
     parser.add_argument("--width", type=int, default=100, help="Terminal width")
     parser.add_argument("--height", type=int, default=35, help="Terminal height")
     parser.add_argument("--scale", type=float, default=3.0, help="Depth scale factor")
-    parser.add_argument("--color", action="store_true", help="Use ANSI color")
+    parser.add_argument("--no-color", action="store_true", help="Disable color (plain ASCII)")
     parser.set_defaults(func=_run_3d)
 
 def _run_3d(args):
     from .features.ascii3d.cli import run_viewer
-    run_viewer(args.image, args.width, args.height, args.scale, args.color)
+    run_viewer(args.image, args.width, args.height, args.scale, use_color=not args.no_color)
 
 
 def _run_ascii(args):

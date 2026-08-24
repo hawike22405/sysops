@@ -6,7 +6,7 @@ from pathlib import Path
 from .camera import Camera
 from .depth import BrightnessDepthGenerator, DepthGenerator, apply_depth_scale
 from .geometry import Mesh, rotation_x, rotation_y
-from .image import PreprocessConfig, preprocess
+from .image import PreprocessConfig, preprocess, preprocess_color
 from .lighting import Light
 from .mesh import generate_mesh_from_depth
 from .rasterizer import Rasterizer
@@ -21,7 +21,7 @@ class ViewerConfig:
     fps: int = 15
     update_hz: int = 60
     wireframe: bool = False
-    use_color: bool = False
+    use_color: bool = True
 
 
 @dataclass
@@ -37,10 +37,10 @@ class Viewer:
     def load_image(self, path: str | Path, preprocess_config: PreprocessConfig | None = None) -> None:
         if preprocess_config is None:
             preprocess_config = PreprocessConfig()
-        grayscale = preprocess(path, preprocess_config)
+        grayscale, rgb = preprocess_color(path, preprocess_config)
         depth = self.depth_generator.generate(grayscale)
         depth = apply_depth_scale(depth, self.config.depth_scale)
-        self.mesh = generate_mesh_from_depth(depth, depth_scale=1.0)
+        self.mesh = generate_mesh_from_depth(depth, depth_scale=1.0, rgb=rgb)
 
     def load_mesh(self, mesh: Mesh) -> None:
         self.mesh = mesh

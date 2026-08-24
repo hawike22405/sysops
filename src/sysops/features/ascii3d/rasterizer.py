@@ -15,6 +15,7 @@ class FrameBuffer:
     height: int
     chars: np.ndarray = field(init=False)
     depth: np.ndarray = field(init=False)
+    colors: np.ndarray = field(init=False)  # (H, W, 3) uint8 RGB per pixel
 
     def __post_init__(self) -> None:
         self.clear()
@@ -22,6 +23,7 @@ class FrameBuffer:
     def clear(self, background_char: str = " ") -> None:
         self.chars = np.full((self.height, self.width), background_char, dtype="<U1")
         self.depth = np.full((self.height, self.width), np.inf, dtype=np.float64)
+        self.colors = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
 
 @dataclass
@@ -48,6 +50,8 @@ class Rasterizer:
                 clip_vertices[index, :3] /= w
                 clip_vertices[index, 3] = 1.0
         screen_vertices = self._to_screen_space(clip_vertices[:, :3])
+
+        has_colors = mesh.colors is not None
         for face_index, (i0, i1, i2) in enumerate(mesh.faces):
             if not (visible[i0] and visible[i1] and visible[i2]):
                 continue
@@ -55,11 +59,18 @@ class Rasterizer:
             world_normal = transform_direction(model_matrix, local_normal)
             brightness = face_brightness(world_normal, light)
             char = brightness_to_char(brightness, self.ramp)
+
+            c0 = mesh.colors[i0] if has_colors else None
+            c1 = mesh.colors[i1] if has_colors else None
+            c2 = mesh.colors[i2] if has_colors else None
+
             self._rasterize_triangle(
                 framebuffer,
                 screen_vertices[i0], screen_vertices[i1], screen_vertices[i2],
                 camera_vertices[i0][2], camera_vertices[i1][2], camera_vertices[i2][2],
                 char,
+                brightness,
+                c0, c1, c2,
             )
         return framebuffer
 
@@ -80,6 +91,10 @@ class Rasterizer:
         depth1: float,
         depth2: float,
         char: str,
+        brightness: float = 1.0,
+        c0: np.ndarray | None = None,
+        c1: np.ndarray | None = None,
+        c2: np.ndarray | None = None,
     ) -> None:
         x0, y0 = float(p0[0]), float(p0[1])
         x1, y1 = float(p1[0]), float(p1[1])
@@ -92,6 +107,8 @@ class Rasterizer:
         max_x = min(framebuffer.width - 1, int(np.ceil(max(x0, x1, x2))))
         min_y = max(0, int(np.floor(min(y0, y1, y2))))
         max_y = min(framebuffer.height - 1, int(np.ceil(max(y0, y1, y2))))
+
+        has_color = c0 is not None
 
         for y in range(min_y, max_y + 1):
             py = y + 0.5
@@ -106,3 +123,9 @@ class Rasterizer:
                 if depth < framebuffer.depth[y, x]:
                     framebuffer.depth[y, x] = depth
                     framebuffer.chars[y, x] = char
+                    if has_color:
+                        # Interpolate vertex colors and modulate by lighting brightness
+                        r = int(np.clip((w2 * c0[0] + w0 * c2[0] + w1 * c1[0]) * brightness, 0, 255))
+                        g = int(np.clip((w2 * c0[1] + w0 * c2[1] + w1 * c1[1]) * brightness, 0, 255))
+                        b = int(np.clip((w2 * c0[2] + w0 * c2[2] + w1 * c1[2]) * brightness, 0, 255))
+                        framebuffer.colors[y, x] = (r, g, b)
