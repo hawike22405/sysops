@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -11,7 +11,9 @@ DEFAULT_ASCII_RAMP = " .:-=+*#%@"
 
 @dataclass
 class Light:
-    direction: Vec3 = np.array([0.4, 0.6, 1.0], dtype=np.float64)
+    direction: Vec3 = field(
+        default_factory=lambda: np.array([0.4, 0.6, 1.0], dtype=np.float64)
+    )
     ambient: float = 0.15
 
     def normalized_direction(self) -> Vec3:
