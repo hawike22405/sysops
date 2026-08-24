@@ -22,6 +22,7 @@ class ViewerConfig:
     update_hz: int = 60
     wireframe: bool = False
     use_color: bool = True
+    style: str = "chars"
 
 
 @dataclass
@@ -48,7 +49,8 @@ class Viewer:
     def render_frame(self) -> str:
         if self.mesh is None:
             raise RuntimeError("Call load_image() or load_mesh() before render_frame().")
-        rasterizer = Rasterizer(self.config.terminal_width, self.config.terminal_height)
+        ramp = "█" if self.config.style == "blocks" else None
+        rasterizer = Rasterizer(self.config.terminal_width, self.config.terminal_height, ramp=ramp) if ramp else Rasterizer(self.config.terminal_width, self.config.terminal_height)
         model_matrix = rotation_y(self.yaw) @ rotation_x(self.pitch)
         framebuffer = rasterizer.render(self.mesh, model_matrix, self.camera, self.light)
         renderer = TerminalRenderer(use_color=self.config.use_color)

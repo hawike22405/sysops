@@ -273,7 +273,8 @@ def render_animated(data: dict[str, Any], image_path: str, width: int = 40, colo
         terminal_width=width,
         terminal_height=int(width * 0.45),  # Approximate aspect ratio match
         depth_scale=1.2,
-        use_color=color
+        use_color=color,
+        style="blocks"
     )
     viewer = Viewer(config=config)
     try:
