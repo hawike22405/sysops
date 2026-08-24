@@ -78,12 +78,51 @@ class Viewer:
 
     def run(self) -> None:
         import time
+        import sys
 
         if self.mesh is None:
             raise RuntimeError("Call load_image() or load_mesh() before run().")
         delay = 1.0 / max(1, self.config.fps)
-        while True:
-            print("\033[2J\033[H", end="")
-            print(self.render_frame())
-            print("\n[a/d] rotate  [w/s] tilt  [+/-] zoom  [r] reset  [q] quit")
-            time.sleep(delay)
+        
+        is_windows = sys.platform == "win32"
+        if is_windows:
+            import msvcrt
+        else:
+            import select
+            import tty
+            import termios
+
+        if not is_windows:
+            old_settings = termios.tcgetattr(sys.stdin)
+            tty.setcbreak(sys.stdin.fileno())
+
+        try:
+            while True:
+                print("\033[2J\033[H", end="")
+                print(self.render_frame())
+                print("\n[a/d] rotate  [w/s] tilt  [+/-] zoom  [r] reset  [q] quit")
+                
+                start_time = time.time()
+                key_pressed = None
+                while time.time() - start_time < delay:
+                    if is_windows:
+                        if msvcrt.kbhit():
+                            ch = msvcrt.getch()
+                            if ch in (b'\x00', b'\xe0'):
+                                msvcrt.getch()
+                            else:
+                                key_pressed = ch.decode("utf-8", "ignore")
+                                break
+                    else:
+                        dr, _, _ = select.select([sys.stdin], [], [], 0.05)
+                        if dr:
+                            key_pressed = sys.stdin.read(1)
+                            break
+                    time.sleep(0.01)
+
+                if key_pressed:
+                    if not self.handle_key(key_pressed):
+                        break
+        finally:
+            if not is_windows:
+                termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)

@@ -26,6 +26,20 @@ def add_ascii_subcommand(subparsers):
     parser.set_defaults(func=_run_ascii)
 
 
+def add_3d_subcommand(subparsers):
+    parser = subparsers.add_parser("3d", help="Render an image in interactive 3D ASCII")
+    parser.add_argument("image", help="Path to an image file")
+    parser.add_argument("--width", type=int, default=100, help="Terminal width")
+    parser.add_argument("--height", type=int, default=35, help="Terminal height")
+    parser.add_argument("--scale", type=float, default=3.0, help="Depth scale factor")
+    parser.add_argument("--color", action="store_true", help="Use ANSI color")
+    parser.set_defaults(func=_run_3d)
+
+def _run_3d(args):
+    from .features.ascii3d.cli import run_viewer
+    run_viewer(args.image, args.width, args.height, args.scale, args.color)
+
+
 def _run_ascii(args):
     try:
         print(render_ascii(args.image, width=args.width, invert=args.invert, color=args.color, style=args.style))
@@ -169,6 +183,7 @@ def build_parser():
     parser.add_argument("--logo-style", choices=["chars", "blocks"], default=None, help="Logo color style")
     subparsers = parser.add_subparsers(dest="command")
     add_ascii_subcommand(subparsers)
+    add_3d_subcommand(subparsers)
     add_logo_subcommand(subparsers)
     add_play_subcommand(subparsers)
     add_dashboard_subcommand(subparsers)
@@ -185,7 +200,7 @@ def main():
     if args.play or args.command == "play":
         run_game()
         return
-    if args.command == "ascii":
+    if args.command in {"ascii", "3d"}:
         args.func(args)
         return
     if args.command == "logo":
