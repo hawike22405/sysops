@@ -75,6 +75,7 @@ if not errorlevel 1 (
     goto wait
 )
 cd /d "{repo}"
+git pull origin {BRANCH}
 "{python_exe}" -m pip install --upgrade --force-reinstall --no-deps .
 if errorlevel 1 (
     echo SysOps update failed.
@@ -97,6 +98,7 @@ while kill -0 {pid} 2>/dev/null; do
     sleep 1
 done
 cd "{repo}" || exit 1
+git pull origin {BRANCH}
 "{python_exe}" -m pip install --upgrade --force-reinstall --no-deps .
 rm -- "$0"
 '''
