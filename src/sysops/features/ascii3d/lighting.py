@@ -21,7 +21,10 @@ class Light:
 
 
 def face_brightness(normal: Vec3, light: Light) -> float:
-    raise NotImplementedError("Implement Lambertian face brightness.")
+    n = normalize(normal)
+    l = normalize(light.direction)
+    diffuse = max(0.0, float(np.dot(n, l)))
+    return max(0.0, min(1.0, float(light.ambient) + (1.0 - float(light.ambient)) * diffuse))
 
 
 def brightness_to_char(brightness: float, ramp: str = DEFAULT_ASCII_RAMP) -> str:
