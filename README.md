@@ -47,7 +47,7 @@ sysops --no-root
 sysops --no-logo
 ```
 
-The terminal summary uses the current panel-based renderer. JSON remains available through `--output` for automation.
+The terminal summary uses a modern panel-based renderer. If a persistent logo is configured, it is displayed side-by-side with your key system details in a classic neofetch-style layout. JSON remains available through `--output` for automation.
 
 ### Live process monitor
 
@@ -146,24 +146,34 @@ sysops ascii ./logo.png --width 80 --color --style blocks
 
 When no image is supplied to the ASCII command, SysOps falls back to a built-in OS logo.
 
-## 3D ASCII renderer foundation
+## 3D ASCII Image Viewer
 
-SysOps now contains an **experimental `ascii3d` subsystem** under `src/sysops/features/ascii3d/`.
+SysOps features a fully interactive 3D ASCII image viewer powered by a custom software rasterizer. It processes 2D images, generates depth maps, constructs a 3D mesh, and renders it to your terminal using 24-bit ANSI colors and a high-density ASCII ramp.
 
-It is intentionally additive: the original SysOps features remain the primary supported interface, while the 3D subsystem provides the foundation for a future CPU-based 3D terminal renderer.
+You can launch the interactive 3D viewer with:
 
-Current pipeline:
-
-```text
-image.py → depth.py → mesh.py → geometry.py → camera.py
-         → rasterizer.py → terminal.py → viewer.py
+```bash
+sysops 3d /path/to/image.png
 ```
 
-The foundation currently includes image preprocessing, depth generation, mesh construction, geometry primitives, camera scaffolding, lighting, rasterization scaffolding, terminal rendering helpers, a viewer scaffold, and a cube example.
+Optional arguments:
+- `--width`, `--height`: Terminal dimensions (default 100x35)
+- `--scale`: Depth extrusion scale (default 3.0)
+- `--no-color`: Disable original image colors and render in plain grayscale ASCII
 
-The 3D feature is **not yet exposed as a stable `sysops 3d` command**. Camera projection, full triangle rasterization, interactive input, lighting/shading integration, and the final viewer loop are still implementation milestones.
+### Interactive Controls
 
-See [`src/sysops/features/ascii3d/README.md`](src/sysops/features/ascii3d/README.md) for the subsystem details and suggested development order.
+Once the viewer is running, use these keys to interact with the 3D model:
+
+| Key | Action |
+|---|---|
+| `w` / `s` | Tilt up / down (pitch) |
+| `a` / `d` | Rotate left / right (yaw) |
+| `+` / `-` | Zoom in / out |
+| `r` | Reset camera |
+| `q` | Quit |
+
+The 3D engine (`src/sysops/features/ascii3d/`) is built entirely from scratch using NumPy and handles image preprocessing, mesh generation, barycentric color interpolation, dynamic lighting, and non-blocking keyboard input across Windows, macOS, and Linux.
 
 ## Python API / project layout
 
