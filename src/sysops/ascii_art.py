@@ -151,6 +151,34 @@ def _image_to_ascii_color_chars(
     return "\n".join(lines)
 
 
+def _image_to_iterm2(image: "Image.Image", width: int) -> str:
+    """Render the image using the iTerm2 inline image protocol (supported by Windows Terminal, iTerm2, WezTerm, etc.)."""
+    import base64
+    from io import BytesIO
+    
+    # Calculate height to maintain aspect ratio
+    orig_w, orig_h = image.size
+    height = max(1, int((orig_h / orig_w) * width * _CHAR_ASPECT_CORRECTION))
+    
+    # Save image to PNG bytes
+    buf = BytesIO()
+    image.save(buf, format="PNG")
+    b64_data = base64.b64encode(buf.getvalue()).decode("ascii")
+    
+    # We specify width and height in character cells.
+    # The \033]1337 sequence is the standard iTerm2 protocol.
+    osc = f"\033]1337;File=inline=1;width={width};height={height};preserveAspectRatio=1:{b64_data}\a"
+    
+    # To allow side-by-side layout, we output the image, then move the cursor UP by 'height' lines.
+    # Then we pad the rest of the lines with spaces so the text renderer knows how wide the logo is.
+    lines = []
+    lines.append(f"{osc}\033[{height}A" + " " * width)
+    for _ in range(height - 1):
+        lines.append(" " * width)
+        
+    return "\n".join(lines)
+
+
 def _default_os_logo() -> str:
     return _OS_LOGOS.get(platform.system(), _OS_LOGOS["Other"])
 
@@ -162,21 +190,25 @@ def render_ascii(
     color: Optional[bool] = None,
     style: str = "chars",
 ) -> str:
-    """Return an ASCII-art rendering of ``image_path``.
+    """Return a rendering of ``image_path``.
 
     ``color`` forces or disables ANSI truecolor; ``None`` auto-detects.
-    ``style`` controls color rendering:
+    ``style`` controls rendering:
       - ``chars``: colored ASCII glyphs for a textured look.
       - ``blocks``: solid half-block cells for a sharper look.
+      - ``image``: true terminal image using iTerm2 protocol (Windows Terminal, Kitty, etc.).
     """
     if width <= 0:
         raise ValueError("width must be greater than 0")
-    if style not in ("chars", "blocks"):
-        raise ValueError("style must be 'chars' or 'blocks'")
+    if style not in ("chars", "blocks", "image"):
+        raise ValueError("style must be 'chars', 'blocks', or 'image'")
     if image_path is None:
         return _default_os_logo()
 
     image = _load_image(image_path)
+    if style == "image":
+        return _image_to_iterm2(image, width=width)
+        
     use_color = supports_truecolor() if color is None else color
     if use_color:
         if style == "blocks":
