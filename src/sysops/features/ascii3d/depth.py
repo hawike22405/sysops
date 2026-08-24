@@ -24,6 +24,20 @@ class BrightnessDepthGenerator(DepthGenerator):
 
     def generate(self, grayscale: np.ndarray) -> np.ndarray:
         depth = grayscale if self.mode is DepthMode.NORMAL else 1.0 - grayscale
+        depth = np.clip(depth, 0.0, 1.0)
+        
+        # Two passes of 3x3 box blur for a smoother, Gaussian-like effect
+        for _ in range(2):
+            depth = (
+                depth +
+                np.roll(depth, 1, axis=0) + np.roll(depth, -1, axis=0) +
+                np.roll(depth, 1, axis=1) + np.roll(depth, -1, axis=1) +
+                np.roll(np.roll(depth, 1, axis=0), 1, axis=1) +
+                np.roll(np.roll(depth, -1, axis=0), 1, axis=1) +
+                np.roll(np.roll(depth, 1, axis=0), -1, axis=1) +
+                np.roll(np.roll(depth, -1, axis=0), -1, axis=1)
+            ) / 9.0
+            
         return np.clip(depth, 0.0, 1.0)
 
 

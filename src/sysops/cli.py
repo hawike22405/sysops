@@ -31,7 +31,7 @@ def add_3d_subcommand(subparsers):
     parser.add_argument("image", help="Path to an image file")
     parser.add_argument("--width", type=int, default=100, help="Terminal width")
     parser.add_argument("--height", type=int, default=35, help="Terminal height")
-    parser.add_argument("--scale", type=float, default=3.0, help="Depth scale factor")
+    parser.add_argument("--scale", type=float, default=1.2, help="Depth extrusion scale (default: 1.2)")
     parser.add_argument("--no-color", action="store_true", help="Disable color (plain ASCII)")
     parser.set_defaults(func=_run_3d)
 
