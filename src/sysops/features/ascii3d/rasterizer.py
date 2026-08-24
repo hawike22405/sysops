@@ -38,14 +38,29 @@ class Rasterizer:
         projection = camera.projection_matrix(aspect)
         world_vertices = np.array([transform_point(model_matrix, v) for v in mesh.vertices])
         camera_vertices = np.array([transform_point(view, v) for v in world_vertices])
-        clip_vertices = np.array([transform_point(projection, v) for v in camera_vertices])
-        screen_vertices = self._to_screen_space(clip_vertices)
+        clip_vertices = np.array([projection @ np.array([v[0], v[1], v[2], 1.0]) for v in camera_vertices])
+        visible = np.ones(len(clip_vertices), dtype=bool)
+        for index, value in enumerate(clip_vertices):
+            w = value[3]
+            if abs(w) < 1e-12:
+                visible[index] = False
+            else:
+                clip_vertices[index, :3] /= w
+                clip_vertices[index, 3] = 1.0
+        screen_vertices = self._to_screen_space(clip_vertices[:, :3])
         for face_index, (i0, i1, i2) in enumerate(mesh.faces):
+            if not (visible[i0] and visible[i1] and visible[i2]):
+                continue
             local_normal = mesh.compute_face_normal(face_index)
             world_normal = transform_direction(model_matrix, local_normal)
             brightness = face_brightness(world_normal, light)
             char = brightness_to_char(brightness, self.ramp)
-            self._rasterize_triangle(framebuffer, screen_vertices[i0], screen_vertices[i1], screen_vertices[i2], camera_vertices[i0][2], camera_vertices[i1][2], camera_vertices[i2][2], char)
+            self._rasterize_triangle(
+                framebuffer,
+                screen_vertices[i0], screen_vertices[i1], screen_vertices[i2],
+                camera_vertices[i0][2], camera_vertices[i1][2], camera_vertices[i2][2],
+                char,
+            )
         return framebuffer
 
     def _to_screen_space(self, clip_vertices: np.ndarray) -> np.ndarray:
@@ -55,5 +70,39 @@ class Rasterizer:
         screen[:, 2] = clip_vertices[:, 2]
         return screen
 
-    def _rasterize_triangle(self, framebuffer: FrameBuffer, p0: np.ndarray, p1: np.ndarray, p2: np.ndarray, depth0: float, depth1: float, depth2: float, char: str) -> None:
-        raise NotImplementedError("Implement barycentric triangle rasterization.")
+    def _rasterize_triangle(
+        self,
+        framebuffer: FrameBuffer,
+        p0: np.ndarray,
+        p1: np.ndarray,
+        p2: np.ndarray,
+        depth0: float,
+        depth1: float,
+        depth2: float,
+        char: str,
+    ) -> None:
+        x0, y0 = float(p0[0]), float(p0[1])
+        x1, y1 = float(p1[0]), float(p1[1])
+        x2, y2 = float(p2[0]), float(p2[1])
+        area = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)
+        if abs(area) < 1e-9:
+            return
+
+        min_x = max(0, int(np.floor(min(x0, x1, x2))))
+        max_x = min(framebuffer.width - 1, int(np.ceil(max(x0, x1, x2))))
+        min_y = max(0, int(np.floor(min(y0, y1, y2))))
+        max_y = min(framebuffer.height - 1, int(np.ceil(max(y0, y1, y2))))
+
+        for y in range(min_y, max_y + 1):
+            py = y + 0.5
+            for x in range(min_x, max_x + 1):
+                px = x + 0.5
+                w0 = ((x1 - x0) * (py - y0) - (y1 - y0) * (px - x0)) / area
+                w1 = ((x2 - x1) * (py - y1) - (y2 - y1) * (px - x1)) / area
+                w2 = 1.0 - w0 - w1
+                if w0 < -1e-9 or w1 < -1e-9 or w2 < -1e-9:
+                    continue
+                depth = w0 * depth2 + w1 * depth0 + w2 * depth1
+                if depth < framebuffer.depth[y, x]:
+                    framebuffer.depth[y, x] = depth
+                    framebuffer.chars[y, x] = char
