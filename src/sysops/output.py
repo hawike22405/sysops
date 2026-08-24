@@ -33,7 +33,11 @@ def render(data: dict[str, Any], logo: str | None = None) -> None:
 def _strip_ansi(text: str) -> str:
     """Remove ANSI escape sequences to measure visible width."""
     import re
-    return re.sub(r'\x1b\[[0-9;]*m', '', text)
+    # Strip CSI (colors, cursor movements, etc)
+    text = re.sub(r'\x1b\[[0-9;?]*[a-zA-Z]', '', text)
+    # Strip OSC (image protocols, window titles, etc)
+    text = re.sub(r'\x1b\].*?\x07', '', text)
+    return text
 
 
 def _render_side_by_side(data: dict[str, Any], logo: str) -> None:
@@ -87,10 +91,13 @@ def _render_side_by_side(data: dict[str, Any], logo: str) -> None:
         info_part = info_lines[i] if i < len(info_lines) else ""
         # Pad logo to fixed visible width
         visible_len = len(_strip_ansi(logo_part))
-        padding = " " * (logo_width - visible_len)
+        padding = " " * max(0, logo_width - visible_len)
         output_lines.append(f"{logo_part}{padding}{gap}{info_part}")
-    console.print(Text.from_ansi("\n".join(output_lines)))
-    console.print()  # blank line before panels
+        
+    # Print natively to preserve OSC image sequences that rich would strip
+    import sys
+    sys.stdout.write("\n".join(output_lines) + "\n\n")
+    sys.stdout.flush()
 
 
 def _system_info(data: dict[str, Any]) -> dict[str, Any]:

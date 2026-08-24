@@ -160,9 +160,15 @@ def _image_to_iterm2(image: "Image.Image", width: int) -> str:
     orig_w, orig_h = image.size
     height = max(1, int((orig_h / orig_w) * width * _CHAR_ASPECT_CORRECTION))
     
+    # Resize image so we don't send megabytes of base64 data to the terminal buffer
+    # A standard terminal cell is about 10x20 pixels
+    pixel_width = width * 10
+    pixel_height = height * 20
+    resized = image.resize((pixel_width, pixel_height))
+    
     # Save image to PNG bytes
     buf = BytesIO()
-    image.save(buf, format="PNG")
+    resized.save(buf, format="PNG")
     b64_data = base64.b64encode(buf.getvalue()).decode("ascii")
     
     # We specify width and height in character cells.
