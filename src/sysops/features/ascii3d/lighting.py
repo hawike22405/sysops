@@ -6,7 +6,7 @@ import numpy as np
 
 from .geometry import Vec3, normalize
 
-DEFAULT_ASCII_RAMP = " .:-=+*#%@"
+DEFAULT_ASCII_RAMP = " `.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@"
 
 
 @dataclass

@@ -28,7 +28,7 @@ except ImportError as exc:  # pragma: no cover
         "The 'ascii art' feature requires Pillow. Install it with: pip install Pillow"
     ) from exc
 
-_RAMP = "@%#*+=-:. "
+_RAMP = "@&%QWM0NB$gD#R8mHXKAUbGOpV4d9h6Pkqw2SE]ayjx5YZoen[ultI13fC}{iF|)(7Jv Tl?sz/*cr!+><;=^,_:'.-` "
 _CHAR_ASPECT_CORRECTION = 0.55
 
 _UPPER_HALF_BLOCK = "\u2580"

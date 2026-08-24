@@ -19,11 +19,78 @@ console = Console()
 
 
 def render(data: dict[str, Any], logo: str | None = None) -> None:
-    """Render the system summary as bordered panels, with an optional logo."""
+    """Render the system summary as bordered panels, with an optional logo.
+
+    When a logo is provided, it is displayed side-by-side with the key
+    system details (neofetch-style) before the detailed panels.
+    """
     if logo:
-        console.print(Panel(Text.from_ansi(logo), border_style="cyan", padding=(0, 1)))
+        _render_side_by_side(data, logo)
     for panel in _build_panels(data):
         console.print(panel)
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences to measure visible width."""
+    import re
+    return re.sub(r'\x1b\[[0-9;]*m', '', text)
+
+
+def _render_side_by_side(data: dict[str, Any], logo: str) -> None:
+    """Print logo on the left and key system info on the right, neofetch-style."""
+    logo_lines = logo.split("\n")
+    info = _system_info(data)
+
+    # Build info lines as label: value pairs
+    hostname = info.get("hostname", "localhost")
+    info_lines = [
+        f"\x1b[1;36m{hostname}\x1b[0m",
+        "\x1b[36m" + "-" * len(hostname) + "\x1b[0m",
+        f"\x1b[1;36mOS\x1b[0m: {info.get('os', 'N/A')}",
+        f"\x1b[1;36mKernel\x1b[0m: {info.get('kernel', 'N/A')}",
+        f"\x1b[1;36mUptime\x1b[0m: {info.get('uptime', 'N/A')}",
+    ]
+    for key in ("de", "wm", "terminal", "shell"):
+        if info.get(key):
+            info_lines.append(f"\x1b[1;36m{key.upper()}\x1b[0m: {info[key]}")
+
+    # CPU
+    cpu = data.get("cpu", {})
+    model = cpu.get("model")
+    if model:
+        info_lines.append(f"\x1b[1;36mCPU\x1b[0m: {model}")
+
+    # Memory
+    mem = data.get("memory", {})
+    if "total" in mem:
+        total, used = mem.get("total", "?"), mem.get("used", "?")
+        pct = mem.get("used_pct", mem.get("percent", "?"))
+        info_lines.append(f"\x1b[1;36mMemory\x1b[0m: {used} / {total} ({pct}%)")
+    elif "total_bytes" in mem:
+        info_lines.append(f"\x1b[1;36mMemory\x1b[0m: {_format_bytes(mem.get('used_bytes', 0))} / {_format_bytes(mem.get('total_bytes', 0))}")
+
+    # GPU
+    gpu = data.get("gpu", {})
+    if isinstance(gpu, list):
+        gpu = gpu[0] if gpu else {}
+    gpu_name = gpu.get("name") or gpu.get("Name")
+    if gpu_name:
+        info_lines.append(f"\x1b[1;36mGPU\x1b[0m: {gpu_name}")
+
+    # Merge logo and info side-by-side
+    logo_width = max(len(_strip_ansi(line)) for line in logo_lines) if logo_lines else 0
+    gap = "    "
+    max_lines = max(len(logo_lines), len(info_lines))
+    output_lines = []
+    for i in range(max_lines):
+        logo_part = logo_lines[i] if i < len(logo_lines) else ""
+        info_part = info_lines[i] if i < len(info_lines) else ""
+        # Pad logo to fixed visible width
+        visible_len = len(_strip_ansi(logo_part))
+        padding = " " * (logo_width - visible_len)
+        output_lines.append(f"{logo_part}{padding}{gap}{info_part}")
+    console.print(Text.from_ansi("\n".join(output_lines)))
+    console.print()  # blank line before panels
 
 
 def _system_info(data: dict[str, Any]) -> dict[str, Any]:

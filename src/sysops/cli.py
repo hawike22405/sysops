@@ -224,7 +224,7 @@ def main():
     if not args.no_logo:
         cfg = load_config()
         image = args.image if args.image is not None else cfg.get("image")
-        width = args.logo_width if args.logo_width is not None else cfg.get("width", 28)
+        width = args.logo_width if args.logo_width is not None else cfg.get("width", 40)
         color = args.logo_color if args.logo_color is not None else cfg.get("color")
         style = args.logo_style if args.logo_style is not None else cfg.get("style", "chars")
         try:
