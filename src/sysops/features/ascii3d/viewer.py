@@ -34,7 +34,9 @@ class Viewer:
     pitch: float = 0.0
     mesh: Mesh | None = field(default=None, init=False)
 
-    def load_image(self, path: str | Path, preprocess_config: PreprocessConfig = PreprocessConfig()) -> None:
+    def load_image(self, path: str | Path, preprocess_config: PreprocessConfig | None = None) -> None:
+        if preprocess_config is None:
+            preprocess_config = PreprocessConfig()
         grayscale = preprocess(path, preprocess_config)
         depth = self.depth_generator.generate(grayscale)
         depth = apply_depth_scale(depth, self.config.depth_scale)
@@ -53,7 +55,35 @@ class Viewer:
         return renderer.render_to_string(framebuffer)
 
     def handle_key(self, key: str) -> bool:
-        raise NotImplementedError("Implement interactive key bindings.")
+        key = key.lower()
+        if key in ("q", "esc"):
+            return False
+        if key in ("left", "a"):
+            self.yaw -= 0.1
+        elif key in ("right", "d"):
+            self.yaw += 0.1
+        elif key in ("up", "w"):
+            self.pitch = max(-1.4, self.pitch - 0.1)
+        elif key in ("down", "s"):
+            self.pitch = min(1.4, self.pitch + 0.1)
+        elif key in ("+", "="):
+            self.camera.dolly(0.35)
+        elif key == "-":
+            self.camera.dolly(-0.35)
+        elif key == "r":
+            self.yaw = 0.0
+            self.pitch = 0.0
+            self.camera.position = self.camera.target + [0.0, 0.0, 5.0]
+        return True
 
     def run(self) -> None:
-        raise NotImplementedError("Implement the interactive render loop.")
+        import time
+
+        if self.mesh is None:
+            raise RuntimeError("Call load_image() or load_mesh() before run().")
+        delay = 1.0 / max(1, self.config.fps)
+        while True:
+            print("\033[2J\033[H", end="")
+            print(self.render_frame())
+            print("\n[a/d] rotate  [w/s] tilt  [+/-] zoom  [r] reset  [q] quit")
+            time.sleep(delay)
