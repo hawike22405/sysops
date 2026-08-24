@@ -217,7 +217,7 @@ def main():
         except (UnsupportedImageError, ValueError) as exc:
             print(f"Warning: couldn't render logo: {exc}")
 
-    render(data)
+    render(data, logo=logo)
 
     if args.output:
         Path(args.output).write_text(render_json(data), encoding="utf-8")
