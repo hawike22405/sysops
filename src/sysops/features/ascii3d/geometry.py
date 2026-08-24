@@ -96,4 +96,13 @@ class Mesh:
         return normalize(np.cross(b - a, c - a))
 
     def compute_vertex_normals(self) -> np.ndarray:
-        raise NotImplementedError("Implement per-vertex normal accumulation.")
+        normals = np.zeros_like(self.vertices, dtype=np.float64)
+        for face_index, (i0, i1, i2) in enumerate(self.faces):
+            normal = self.compute_face_normal(face_index)
+            normals[i0] += normal
+            normals[i1] += normal
+            normals[i2] += normal
+        for i in range(len(normals)):
+            normals[i] = normalize(normals[i])
+        self.normals = normals
+        return normals
