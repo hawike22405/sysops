@@ -28,4 +28,10 @@ class TerminalRenderer:
         return "\n".join("".join(row) for row in framebuffer.chars)
 
     def read_key_nonblocking(self):
-        raise NotImplementedError("Reuse SysOps' existing cross-platform key reader here.")
+        try:
+            import msvcrt
+            if msvcrt.kbhit():
+                return msvcrt.getwch()
+            return None
+        except ImportError:
+            return None
