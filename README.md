@@ -1,6 +1,6 @@
 # SysOps
 
-A cross-platform terminal system-info dashboard for Windows, macOS, and Linux — hostname, OS, CPU, memory, disks, network interfaces, and GPU at a glance, plus a live htop-style process/resource monitor.
+A cross-platform terminal system-information dashboard for Windows, macOS, and Linux. SysOps reports hostname, OS, CPU, memory, disks, network interfaces, GPU information, and uptime, and includes an interactive dashboard, htop-style process monitor, benchmark tools, achievements, ASCII art/logo support, a Dino game, and a self-update mechanism.
 
 ## Installation
 
@@ -22,37 +22,50 @@ curl -o install.bat https://raw.githubusercontent.com/hawike22405/sysops/main/in
 curl -fsSL https://raw.githubusercontent.com/hawike22405/sysops/main/install.sh | bash
 ```
 
-The installers set up an isolated virtual environment under your user profile and put a `sysops` command on your `PATH` without modifying system Python packages.
+The installers create an isolated virtual environment and place the `sysops` command on your user `PATH` without modifying the system Python installation.
+
+For a development checkout:
+
+```bash
+git clone https://github.com/hawike22405/sysops.git
+cd sysops
+python -m pip install -e .
+```
+
+On Windows, use a Python version supported by your environment and let the package install its Windows-specific console dependency automatically.
 
 ## Usage
 
-Run the system summary:
+### System summary
 
 ```bash
 sysops
+sysops --detail full
+sysops --output report.json
+sysops --modules cpu,memory,disks
+sysops --no-root
+sysops --no-logo
 ```
 
-The summary uses one consistent bordered-panel layout for system, CPU, memory, storage, network, and GPU information. The old `--format` output switch has been removed.
+The terminal summary uses the current panel-based renderer. JSON remains available through `--output` for automation.
 
-### Live monitor
+### Live process monitor
 
 ```bash
 sysops monitor
 ```
 
-`sysops htop` remains an alias.
+`sysops htop` is an alias.
 
 Controls:
 
 | Key | Action |
 |---|---|
-| `c` | Sort processes by CPU% |
-| `m` | Sort processes by memory% |
-| `p` | Sort processes by PID |
-| `n` | Sort processes by name |
+| `c` | Sort by CPU% |
+| `m` | Sort by memory% |
+| `p` | Sort by PID |
+| `n` | Sort by process name |
 | `q` | Quit |
-
-The monitor uses `rich` live rendering and `psutil` for cross-platform CPU, memory, and process data.
 
 ### Interactive dashboard
 
@@ -60,18 +73,14 @@ The monitor uses `rich` live rendering and `psutil` for cross-platform CPU, memo
 sysops dashboard
 ```
 
-Alias:
-
-```bash
-sysops menu
-```
+`sysops menu` is an alias.
 
 Controls:
 
 | Key | Action |
 |---|---|
 | `h` | Toggle extended statistics |
-| `t` | Cycle dashboard themes |
+| `t` | Cycle themes |
 | `c` | Copy displayed statistics |
 | `r` | Refresh |
 | `q` | Quit |
@@ -84,7 +93,7 @@ sysops benchmark --duration 0.5
 sysops benchmark --no-multi
 ```
 
-The benchmark reports temporary-file read/write throughput and single/multi-core CPU operations per second.
+The benchmark measures temporary-file read/write throughput and single-/multi-core CPU operations.
 
 ### Achievements
 
@@ -93,7 +102,7 @@ sysops achievements
 sysops achievements --list
 ```
 
-Unlocked badges are stored locally in `~/.sysops_achievements.json`; no achievement data is sent to a server.
+Achievement data is stored locally; it is not uploaded to a SysOps service.
 
 ### Self-update
 
@@ -101,7 +110,7 @@ Unlocked badges are stored locally in `~/.sysops_achievements.json`; no achievem
 sysops update
 ```
 
-SysOps checks the remote `main` branch and updates the installed source when changes are available. Windows uses a detached helper so the running executable is not overwritten while it is still locked.
+The updater checks the remote `main` branch. On Windows it uses a detached helper so the running executable can exit before the installation is replaced.
 
 ### Dino game
 
@@ -109,11 +118,11 @@ SysOps checks the remote `main` branch and updates the installed source when cha
 sysops play
 ```
 
-Controls include jump, duck, pause, restart, and quit.
+The game supports jumping, ducking, pause/restart, obstacles, scoring, and a persistent high score.
 
 ### ASCII art and logos
 
-Use an image for one run:
+Render an image for one command:
 
 ```bash
 sysops --image ./logo.png --logo-width 24
@@ -127,24 +136,38 @@ sysops logo show
 sysops logo clear
 ```
 
-Render an image as terminal ASCII art:
+Render an image as ASCII art:
 
 ```bash
 sysops ascii ./logo.png --width 80 --color
 sysops ascii ./logo.png --width 80 --no-color --invert
+sysops ascii ./logo.png --width 80 --color --style blocks
 ```
 
-## Useful options
+When no image is supplied to the ASCII command, SysOps falls back to a built-in OS logo.
 
-```bash
-sysops --detail full
-sysops --output report.json
-sysops --modules cpu,memory,disks
-sysops --no-root
-sysops --no-logo
+## 3D ASCII renderer foundation
+
+SysOps now contains an **experimental `ascii3d` subsystem** under `src/sysops/features/ascii3d/`.
+
+It is intentionally additive: the original SysOps features remain the primary supported interface, while the 3D subsystem provides the foundation for a future CPU-based 3D terminal renderer.
+
+Current pipeline:
+
+```text
+image.py → depth.py → mesh.py → geometry.py → camera.py
+         → rasterizer.py → terminal.py → viewer.py
 ```
 
-`--output` writes the collected JSON data to a file. Normal terminal rendering is the single panel-based layout.
+The foundation currently includes image preprocessing, depth generation, mesh construction, geometry primitives, camera scaffolding, lighting, rasterization scaffolding, terminal rendering helpers, a viewer scaffold, and a cube example.
+
+The 3D feature is **not yet exposed as a stable `sysops 3d` command**. Camera projection, full triangle rasterization, interactive input, lighting/shading integration, and the final viewer loop are still implementation milestones.
+
+See [`src/sysops/features/ascii3d/README.md`](src/sysops/features/ascii3d/README.md) for the subsystem details and suggested development order.
+
+## Python API / project layout
+
+The package uses a `src/` layout and a standard `pyproject.toml` build configuration. The 3D code is isolated under `sysops.features.ascii3d` so it can evolve without replacing the existing system-information, dashboard, monitor, game, benchmark, and updater modules.
 
 ## Requirements
 
@@ -154,32 +177,36 @@ sysops --no-logo
 - psutil
 - Pillow
 - `windows-curses` on Windows
+- NumPy for the experimental `ascii3d` subsystem
+
+The normal SysOps runtime does not require the 3D subsystem to be used.
 
 ## Development
 
 ```bash
 git clone https://github.com/hawike22405/sysops.git
 cd sysops
-make install
-make run
-```
-
-Run tests with:
-
-```bash
+python -m pip install -e .
 python -m pytest -q
 ```
 
+To experiment with the 3D subsystem, install its additional dependencies from:
+
+```bash
+pip install -r src/sysops/features/ascii3d/requirements.txt
+```
+
+The existing test suite covers the core CLI/features and should remain green as the 3D renderer is developed incrementally.
+
 ## Uninstalling
 
-- Windows: remove `%USERPROFILE%\.local\share\sysops`
-- macOS/Linux: remove `~/.local/share/sysops`
-
-Also remove the managed SysOps directory from your user `PATH` if necessary.
+The official installers keep SysOps in a user-managed directory. Remove the managed SysOps directory and its `PATH` entry when you want to uninstall.
 
 ## Contributing
 
 Issues and pull requests are welcome at [github.com/hawike22405/sysops](https://github.com/hawike22405/sysops).
+
+When adding new features, keep optional or experimental subsystems isolated so the stable CLI and cross-platform runtime remain intact.
 
 ## License
 
