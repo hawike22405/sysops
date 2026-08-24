@@ -9,7 +9,7 @@ from PIL import Image, ImageOps
 
 @dataclass
 class PreprocessConfig:
-    width: int = 120
+    width: int = 50
     height: int | None = None
     crop: bool = True
     remove_background: bool = False

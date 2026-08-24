@@ -15,14 +15,14 @@ from .terminal import TerminalRenderer
 
 @dataclass
 class ViewerConfig:
-    terminal_width: int = 100
-    terminal_height: int = 35
+    terminal_width: int = 80
+    terminal_height: int = 24
     depth_scale: float = 3.0
-    fps: int = 15
-    update_hz: int = 60
+    fps: int = 10
+    update_hz: int = 30
     wireframe: bool = False
     use_color: bool = True
-    style: str = "chars"
+    style: str = "blocks"
 
 
 @dataclass
