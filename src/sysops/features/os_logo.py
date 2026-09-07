@@ -1,9 +1,4 @@
-"""Cross-platform animated ASCII OS logo flipbook.
-
-Uses pre-rendered, fixed-size sprites rather than rebuilding a 3D scene. The
-result is deterministic, low-overhead terminal animation with safe cursor
-handling and resize-aware rendering.
-"""
+"""Cross-platform animated ASCII OS logo flipbook."""
 
 from __future__ import annotations
 
@@ -30,369 +25,77 @@ class LogoFrames:
     frames: tuple[str, ...]
 
 
-# Each logo contains 8 key poses: front -> 3/4 -> edge -> 3/4 -> front,
-# followed by the reverse path. Keeping the same row count avoids vertical jitter.
+# Eight pre-rendered poses per supported OS. All frames in one animation have
+# identical row counts, so the renderer never changes vertical footprint.
 LOGOS: dict[str, LogoFrames] = {
-    "Windows": LogoFrames(
-        "Windows",
-        (
-            "   ██████  ██████   ",
-            "   ██  ██  ██  ██   ",
-            "   ██  ██  ██  ██   ",
-            "   ██████  ██████   ",
-            "   ██████  ██████   ",
-            "   ██  ██  ██  ██   ",
-            "   ██  ██  ██  ██   ",
-            "   ██████  ██████   ",
-            "   \u005c\u005c        //    ",
-            "    \u005c\u005c      //     ",
-            "     \u005c____//      ",
-        ),
-        (
-            "    ██████  █████   ",
-            "    ██  ██  ██  ██  ",
-            "    ██  ██  ██  ██  ",
-            "    ██████  █████   ",
-            "    ██████  █████   ",
-            "    ██  ██  ██  ██  ",
-            "    ██  ██  ██  ██  ",
-            "    ██████  █████   ",
-            "      \u005c\u005c      //     ",
-            "       \u005c____//      ",
-            "         \u005c/         ",
-        ),
-        (
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "        ██          ",
-            "        ██          ",
-            "        ██          ",
-        ),
-        (
-            "   █████  ██████    ",
-            "   ██  ██ ██  ███   ",
-            "   ██  ██ ██  ███   ",
-            "   █████  ██████    ",
-            "   █████  ██████    ",
-            "   ██  ██ ██  ███   ",
-            "   ██  ██ ██  ███   ",
-            "   █████  ██████    ",
-            "    \\         //    ",
-            "     \_______//     ",
-            "                       ",
-        ),
-            "   ██████  ██████   ",
-            "   ██  ██  ██  ██   ",
-            "   ██  ██  ██  ██   ",
-            "   ██████  ██████   ",
-            "   ██████  ██████   ",
-            "   ██  ██  ██  ██   ",
-            "   ██  ██  ██  ██   ",
-            "   ██████  ██████   ",
-            "   //        \\     ",
-            "  //      __//      ",
-            "  \\______/         ",
-        ),
-        (
-            "    █████  ██████   ",
-            "    ██  █  ██  ██   ",
-            "    ██  █  ██  ██   ",
-            "    █████  ██████   ",
-            "    █████  ██████   ",
-            "    ██  █  ██  ██   ",
-            "    ██  █  ██  ██   ",
-            "    █████  ██████   ",
-            "     //      \      ",
-            "    //       \     ",
-            "   /__________\     ",
-        ),
-        (
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ████         ",
-            "       ██           ",
-            "       ██           ",
-            "       ██           ",
-        ),
-        (
-            "    █████  ██████   ",
-            "   █████  ██████    ",
-            "   ██  ██ ██  ██    ",
-            "   █████  ██████    ",
-            "   █████  ██████    ",
-            "   ██  ██ ██  ██    ",
-            "   █████  ██████    ",
-            "    ████  ████      ",
-            "      //     \\      ",
-            "     //       \\     ",
-            "    //_________\\    ",
-        ),
-        ),
-    ),
-    "Linux": LogoFrames(
-        "Linux",
-        (
-            "       .--.         ",
-            "      |o_o |        ",
-            "      |:_/ |        ",
-            "     //   \\ \\       ",
-            "    (|     | )      ",
-            "   /'\\_   _/`\\     ",
-            "   \\___)=(___/     ",
-            "      /____\\        ",
-            "     /______\\       ",
-            "       TUX           ",
-        ),
-        (
-            "         .--.       ",
-            "        /o_o|       ",
-            "        |:_/|       ",
-            "       //  /        ",
-            "      (|  /         ",
-            "     /'_/           ",
-            "     \___           ",
-            "       /__           ",
-            "      /___           ",
-            "       TX            ",
-        ),
-        (
-            "          .-.       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          |_|       ",
-        ),
-        (
-            "         .--.       ",
-            "        |o_o/       ",
-            "        |:_/        ",
-            "        /  \\       ",
-            "       /  |)        ",
-            "      /_   \\       ",
-            "     /___)=\\       ",
-            "    /_______\\      ",
-            "      /____\\        ",
-            "       TUX           ",
-        ),
-        (
-            "       .--.         ",
-            "      | o_o|        ",
-            "      |\_:/|        ",
-            "      / /  \\        ",
-            "     | |   |)       ",
-            "     \\_\_/        ",
-            "      \___/         ",
-            "     /____\\        ",
-            "    /______\\       ",
-            "      TUX           ",
-        ),
-        (
-            "         .--.       ",
-            "        |o_o |      ",
-            "        |:_/ |      ",
-            "       //   /       ",
-            "      (|   /        ",
-            "     /'__/          ",
-            "     \\___          ",
-            "      /__           ",
-            "     /___           ",
-            "      TX            ",
-        ),
-        (
-            "          .-.       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          | |       ",
-            "          |_|       ",
-        ),
-        (
-            "       .--.         ",
-            "      |o_o |        ",
-            "      |:_/ |        ",
-            "     //   \\ \\       ",
-            "    (|     | )      ",
-            "   /'\\_   _/`\\     ",
-            "   \\___)=(___/     ",
-            "      /____\\        ",
-            "     /______\\       ",
-            "       TUX           ",
-        ),
-    ),
-    "macOS": LogoFrames(
-        "macOS",
-        (
-            "        ,--.        ",
-            "      ,'    `.      ",
-            "     /  .--.  \\     ",
-            "    |  (    )  |    ",
-            "     \\  `--'  /     ",
-            "      `.    ,'      ",
-            "        `--'        ",
-            "       _/|          ",
-            "      /__|          ",
-            "       macOS        ",
-        ),
-        (
-            "         ,-.        ",
-            "       ,'   `.      ",
-            "      /  .--  \\     ",
-            "     |  (    )  |   ",
-            "      \\ `--  /     ",
-            "       `.  ,'       ",
-            "         `'         ",
-            "        /|          ",
-            "       /_|          ",
-            "        macOS       ",
-        ),
-        (
-            "          /         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-        ),
-        (
-            "        .--,        ",
-            "      ,'   `.       ",
-            "     /  --.  \\      ",
-            "    |  (   )  |     ",
-            "     \\ `--' /      ",
-            "      `.  ,'        ",
-            "        `-'         ",
-            "        /|          ",
-            "       /_|          ",
-            "       macOS        ",
-        ),
-        (
-            "      .-==-.        ",
-            "    ,'      `.      ",
-            "   /  .--.   \\     ",
-            "  |  (    )   |    ",
-            "   \\  `--'  /     ",
-            "    `.    ,'       ",
-            "      `--'         ",
-            "       /|          ",
-            "      /_|          ",
-            "      macOS        ",
-        ),
-        (
-            "         ,-.        ",
-            "       ,'   `.      ",
-            "      /  .--  \\     ",
-            "     |  (    )  |   ",
-            "      \\ `--  /     ",
-            "       `.  ,'       ",
-            "         `'         ",
-            "        /|          ",
-            "       /_|          ",
-            "        macOS       ",
-        ),
-        (
-            "          /         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-            "          |         ",
-        ),
-        (
-            "        ,--.        ",
-            "      ,'    `.      ",
-            "     /  .--.  \\     ",
-            "    |  (    )  |    ",
-            "     \\  `--'  /     ",
-            "      `.    ,'      ",
-            "        `--'        ",
-            "       _/|          ",
-            "      /__|          ",
-            "       macOS        ",
-        ),
-    ),
-    "Other": LogoFrames(
-        "Other",
-        (
-            "      ┌────────┐    ",
-            "      │ SYSOPS │    ",
-            "      │  OS ?  │    ",
-            "      └────────┘    ",
-            "                    ",
-        ) * 8,
-    ),
+    "Windows": LogoFrames("Windows", (
+        "   ██████  ██████   \n   ██  ██  ██  ██   \n   ██  ██  ██  ██   \n   ██████  ██████   \n   ██████  ██████   \n   ██  ██  ██  ██   \n   ██  ██  ██  ██   \n   ██████  ██████   \n   \\          //    \n    \\        //     \n     \\______/      ",
+        "    ██████  █████   \n    ██  ██  ██  ██  \n    ██  ██  ██  ██  \n    ██████  █████   \n    ██████  █████   \n    ██  ██  ██  ██  \n    ██  ██  ██  ██  \n    ██████  █████   \n      \\      //     \n       \\____//      \n         \\/         ",
+        "        ████        \n        ████        \n        ████        \n        ████        \n        ████        \n        ████        \n        ████        \n        ████        \n        ██          \n        ██          \n        ██          ",
+        "   █████  ██████    \n   ██  ██ ██  ███    \n   ██  ██ ██  ███    \n   █████  ██████     \n   █████  ██████     \n   ██  ██ ██  ███    \n   ██  ██ ██  ███    \n   █████  ██████     \n    \\        //     \n     \\______/       \n                     ",
+        "   ██████  ██████   \n   ██  ██  ██  ██   \n   ██  ██  ██  ██   \n   ██████  ██████   \n   ██████  ██████   \n   ██  ██  ██  ██   \n   ██  ██  ██  ██   \n   ██████  ██████   \n    //        \\    \n   //____    _\\    \n   \\________/      ",
+        "    █████  ██████   \n    ██  █  ██  ██   \n    ██  █  ██  ██   \n    █████  ██████   \n    █████  ██████   \n    ██  █  ██  ██   \n    ██  █  ██  ██   \n    █████  ██████   \n     //      \\     \n    //        \\    \n   /__________\\    ",
+        "       ████         \n       ████         \n       ████         \n       ████         \n       ████         \n       ████         \n       ████         \n       ████         \n       ██           \n       ██           \n       ██           ",
+        "    █████  ██████   \n   █████  ██████    \n   ██  ██ ██  ██    \n   █████  ██████    \n   █████  ██████    \n   ██  ██ ██  ██    \n   █████  ██████    \n    ████  ████      \n      //     \\      \n     //_______\\     \n    /__________\\    ",
+    )),
+    "Linux": LogoFrames("Linux", (
+        "       .--.         \n      |o_o |        \n      |:_/ |        \n     //   \\ \\       \n    (|     | )      \n   /'\\_   _/`\\     \n   \\___)=(___/     \n      /____\\        \n     /______\\       \n       TUX           ",
+        "         .--.       \n        /o_o |       \n        |:_/ |       \n       //   /        \n      (|   /         \n     /'__/          \n     \\___           \n       /__           \n      /___           \n       TX            ",
+        "          .-.       \n          | |       \n          | |       \n          | |       \n          | |       \n          | |       \n          | |       \n          | |       \n          | |       \n          |_|       ",
+        "         .--.       \n        |o_o/       \n        |:_/        \n        /  \\       \n       /  |)        \n      /_   \\       \n     /___)=\\       \n    /_______\\      \n      /____\\        \n       TUX           ",
+        "       .--.         \n      | o_o|        \n      |\\_:/|        \n      / /  \\        \n     | |   |)       \n     \\_\_/        \n      \___/         \n     /____\\        \n    /______\\       \n      TUX           ",
+        "         .--.       \n        |o_o |      \n        |:_/ |      \n       //   /       \n      (|   /        \n     /'__/          \n     \\___          \n      /__           \n     /___           \n      TX            ",
+        "          .-.       \n          | |       \n          | |       \n          | |       \n          | |       \n          | |       \n          | |       \n          | |       \n          | |       \n          |_|       ",
+        "       .--.         \n      |o_o |        \n      |:_/ |        \n     //   \\ \\       \n    (|     | )      \n   /'\\_   _/`\\     \n   \\___)=(___/     \n      /____\\        \n     /______\\       \n       TUX           ",
+    )),
+    "macOS": LogoFrames("macOS", (
+        "        ,--.        \n      ,'    `.      \n     /  .--.  \\     \n    |  (    )  |    \n     \\  `--'  /     \n      `.    ,'      \n        `--'        \n       _/|          \n      /__|          \n       macOS        ",
+        "         ,-.        \n       ,'   `.      \n      /  .--  \\     \n     |  (   )  |    \n      \\  `--  /     \n       `.   ,'       \n         `-'         \n        /|          \n       /_|          \n        macOS       ",
+        "          /         \n          |         \n          |         \n          |         \n          |         \n          |         \n          |         \n          |         \n          |         \n          |         ",
+        "        .--,        \n      ,'   `.       \n     /  --.  \\      \n    |  (   )  |     \n     \\ `--' /      \n      `.  ,'        \n        `-'         \n        /|          \n       /_|          \n       macOS        ",
+        "      .-==-.        \n    ,'      `.      \n   /  .--.   \\     \n  |  (    )   |     \n   \\  `--'  /     \n    `.    ,'       \n      `--'         \n       /|          \n      /_|          \n      macOS        ",
+        "         ,-.        \n       ,'   `.      \n      /  .--  \\     \n     |  (   )  |    \n      \\  `--  /    \n       `.   ,'      \n         `-'        \n        /|          \n       /_|          \n        macOS       ",
+        "          /         \n          |         \n          |         \n          |         \n          |         \n          |         \n          |         \n          |         \n          |         \n          |         ",
+        "        ,--.        \n      ,'    `.      \n     /  .--.  \\     \n    |  (    )  |    \n     \\  `--'  /     \n      `.    ,'      \n        `--'        \n       _/|          \n      /__|          \n       macOS        ",
+    )),
+    "Other": LogoFrames("Other", ("      ┌────────┐    \n      │ SYSOPS │    \n      │  OS ?  │    \n      └────────┘    \n                    ",) * 8),
 }
 
 
 def detect_os() -> str:
     name = platform.system()
-    if name == "Windows":
-        return "Windows"
-    if name == "Darwin":
-        return "macOS"
-    if name == "Linux":
-        return "Linux"
-    return "Other"
+    return {"Windows": "Windows", "Darwin": "macOS", "Linux": "Linux"}.get(name, "Other")
 
 
-def _ansi_color(os_name: str, frame_index: int, text: str) -> str:
+def _colorize(os_name: str, frame_index: int, text: str) -> str:
     if os.environ.get("NO_COLOR") or not sys.stdout.isatty():
         return text
     if os_name == "Windows":
         code = ("96", "94", "36", "94", "96", "94", "36", "94")[frame_index % 8]
-        return f"{CSI}1;{code}m{text}{RESET}"
-    if os_name == "Linux":
+    elif os_name == "Linux":
         code = ("97", "33", "30", "37", "97", "33", "30", "37")[frame_index % 8]
-        return f"{CSI}1;{code}m{text}{RESET}"
-    if os_name == "macOS":
+    elif os_name == "macOS":
         code = ("97", "37", "36", "95", "97", "37", "36", "95")[frame_index % 8]
-        return f"{CSI}1;{code}m{text}{RESET}"
-    return f"{CSI}2m{text}{RESET}"
+    else:
+        code = "90"
+    return f"{CSI}1;{code}m{text}{RESET}"
 
 
 def render_os_frame(os_name: str | None = None, width: int = 28, frame_index: int = 0, color: bool = True) -> str:
     if width <= 0:
         raise ValueError("width must be greater than 0")
     key = os_name or detect_os()
-    frames = LOGOS.get(key, LOGOS["Other"]).frames
-    frame = frames[frame_index % len(frames)]
+    frame = LOGOS.get(key, LOGOS["Other"]).frames[frame_index % 8]
     target = max(MIN_WIDTH, width)
-    rendered: list[str] = []
+    lines = []
     for line in frame.splitlines():
         if len(line) > target:
             start = (len(line) - target) // 2
-            line = line[start : start + target]
+            line = line[start:start + target]
         else:
             line = line.center(target)
-        rendered.append(_ansi_color(key, frame_index, line) if color else line)
-    return "\n".join(rendered)
+        lines.append(_colorize(key, frame_index, line) if color else line)
+    return "\n".join(lines)
 
 
 def logo_frames(os_name: str | None = None) -> tuple[str, ...]:
@@ -422,41 +125,36 @@ class CursorGuard:
 
 
 def animate_os_logo(width: int | None = None, fps: float = DEFAULT_FPS, loops: int | None = None) -> None:
-    """Run the OS logo flipbook until Ctrl+C, or for ``loops`` cycles in tests."""
     if fps <= 0:
         raise ValueError("fps must be greater than 0")
-    os_name = detect_os()
-    frames = logo_frames(os_name)
+    key = detect_os()
+    frames = logo_frames(key)
     interval = 1.0 / fps
     index = 0
     completed = 0
-    rendered_rows = len(frames[0].splitlines())
+    rows = len(frames[0].splitlines())
 
-    # Avoid full-screen clears every frame. HOME once, then cursor-up by the
-    # exact previous frame height. The sprites have a constant row count.
     with CursorGuard():
         try:
             sys.stdout.write(CURSOR_HOME)
             sys.stdout.flush()
-            next_frame_at = time.monotonic()
+            next_at = time.monotonic()
             while loops is None or completed < loops:
-                requested_width = width if width is not None else _terminal_width()
-                frame = render_os_frame(os_name, requested_width, index, color=True)
+                frame_width = width if width is not None else _terminal_width()
+                frame = render_os_frame(key, frame_width, index, color=True)
                 if index or completed:
-                    sys.stdout.write(f"{CSI}{rendered_rows}A")
+                    sys.stdout.write(f"{CSI}{rows}A")
                 sys.stdout.write(frame + "\n" + ERASE_DOWN)
                 sys.stdout.flush()
-
                 index = (index + 1) % len(frames)
                 if index == 0:
                     completed += 1
-                next_frame_at += interval
-                delay = next_frame_at - time.monotonic()
+                next_at += interval
+                delay = next_at - time.monotonic()
                 if delay > 0:
                     time.sleep(delay)
                 else:
-                    # Skip accumulated lag instead of busy-spinning.
-                    next_frame_at = time.monotonic()
+                    next_at = time.monotonic()
         except KeyboardInterrupt:
             sys.stdout.write("\n")
             sys.stdout.flush()
