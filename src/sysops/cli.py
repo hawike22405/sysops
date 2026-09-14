@@ -12,6 +12,8 @@ from .features.benchmark import print_results, run_benchmark
 from .features.htop_view import run_htop_view
 from .features.interactive_menu import run_interactive_menu
 from .features.os_logo import DEFAULT_FPS, animate_os_logo, detect_os, render_os_frame
+from .features.neofetch import gather_system_info, render_fetch
+from .features.neofetch.layout import print_fetch
 from .features.updater import run_update
 from .output import render, render_json
 from .probes import collect_all
@@ -179,6 +181,28 @@ def add_update_subcommand(subparsers):
     parser.set_defaults(func=lambda _args: run_update())
 
 
+def add_fetch_subcommand(subparsers):
+    parser = subparsers.add_parser(
+        "fetch",
+        aliases=["neofetch"],
+        help="Show a neofetch-style system info display with ASCII OS logo",
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output",
+    )
+    parser.set_defaults(func=_run_fetch)
+
+
+def _run_fetch(args):
+    import os
+    if getattr(args, "no_color", False):
+        os.environ["NO_COLOR"] = "1"
+    info = gather_system_info()
+    print_fetch(info)
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="sysops",
@@ -210,6 +234,7 @@ def build_parser():
     add_benchmark_subcommand(subparsers)
     add_achievements_subcommand(subparsers)
     add_update_subcommand(subparsers)
+    add_fetch_subcommand(subparsers)
     return parser
 
 
@@ -277,7 +302,7 @@ def main():
             parser.error("usage: sysops logo {set,clear,show}")
         return
 
-    if args.command in {"dashboard", "menu", "monitor", "htop", "benchmark", "achievements", "update"}:
+    if args.command in {"dashboard", "menu", "monitor", "htop", "benchmark", "achievements", "update", "fetch", "neofetch"}:
         result = args.func(args)
         if args.command == "update" and result:
             raise SystemExit(result)
