@@ -9,6 +9,8 @@ import subprocess
 import sys
 import time
 
+from sysops.ascii_art import render_ascii
+
 THEMES = {
     "default": {"header": "\033[1;36m", "label": "\033[0;37m", "value": "\033[1;37m", "accent": "\033[1;33m", "reset": "\033[0m"},
     "dark": {"header": "\033[1;35m", "label": "\033[0;90m", "value": "\033[1;97m", "accent": "\033[1;34m", "reset": "\033[0m"},
@@ -179,6 +181,7 @@ def _render(theme_name, show_hidden, message=""):
         lines.append(f"{key}: {value}")
     print(f"\n{theme['label']}[h]{theme['reset']} hidden  "
           f"{theme['label']}[t]{theme['reset']} theme  "
+          f"{theme['label']}[i]{theme['reset']} image  "
           f"{theme['label']}[c]{theme['reset']} copy  "
           f"{theme['label']}[r]{theme['reset']} refresh  "
           f"{theme['label']}[q]{theme['reset']} quit")
@@ -207,6 +210,19 @@ def run_interactive_menu():
                 show_hidden = not show_hidden
             elif key == "t":
                 theme_name = THEME_ORDER[(THEME_ORDER.index(theme_name) + 1) % len(THEME_ORDER)]
+            elif key == "i":
+                print("\n" + "-"*20)
+                image_path = input("Enter image path to render as ASCII: ").strip()
+                if image_path:
+                    try:
+                        print("\nRendering image...\n")
+                        print(render_ascii(image_path, width=80))
+                        print("\n" + "-"*20)
+                        input("Press Enter to return to dashboard...")
+                    except Exception as e:
+                        message = f"Error rendering image: {e}"
+                else:
+                    message = "No image path provided."
             elif key == "c":
                 ok, backend = copy_to_clipboard(clip_text)
                 message = f"Copied system info via {backend}." if ok else "Clipboard backend not found."

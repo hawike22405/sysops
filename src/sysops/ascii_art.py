@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageOps
 except ImportError as exc:  # pragma: no cover
     raise ImportError(
         "The 'ascii art' feature requires Pillow. Install it with: pip install Pillow"
@@ -74,6 +74,7 @@ def _load_image(image_path: str) -> "Image.Image":
 
 def _image_to_ascii(image: "Image.Image", width: int, invert: bool) -> str:
     image = image.convert("L")
+    image = ImageOps.autocontrast(image)
     orig_w, orig_h = image.size
     height = max(1, int((orig_h / orig_w) * width * _CHAR_ASPECT_CORRECTION))
     image = image.resize((width, height))
@@ -125,12 +126,19 @@ def _image_to_ascii_color_chars(
 ) -> str:
     """Render colored ASCII glyphs for a textured, classic ASCII look."""
     rgb_image = image.convert("RGB")
+
+    # Preprocess grayscale version for better glyph mapping
+    gray_image = ImageOps.autocontrast(rgb_image.convert("L"))
     orig_w, orig_h = rgb_image.size
     height = max(
         1, int((orig_h / orig_w) * width * _CHAR_ASPECT_CORRECTION)
     )
+
     rgb_image = rgb_image.resize((width, height))
-    pixels = rgb_image.load()
+    gray_image = gray_image.resize((width, height))
+
+    rgb_pixels = rgb_image.load()
+    gray_pixels = gray_image.load()
 
     # Bright pixels are dense glyphs by default; --invert flips the ramp.
     ramp = _RAMP if invert else _RAMP[::-1]
@@ -139,8 +147,8 @@ def _image_to_ascii_color_chars(
         chars = []
         last_fg = None
         for col in range(width):
-            r, g, b = pixels[col, row]
-            lum = int(0.299 * r + 0.587 * g + 0.114 * b)
+            r, g, b = rgb_pixels[col, row]
+            lum = gray_pixels[col, row]
             glyph = ramp[min(len(ramp) - 1, lum * len(ramp) // 256)]
             prefix = ""
             if (r, g, b) != last_fg:
