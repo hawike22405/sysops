@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import shutil
 from pathlib import Path
 
 from .ascii_art import UnsupportedImageError, render_ascii
@@ -254,7 +255,16 @@ def _show_report_once(args, parser):
     modules = _selected_modules(args)
     cfg = load_config()
     image_path = args.image or cfg.get("image")
-    logo_width = args.logo_width or cfg.get("width", 28)
+
+    # Dynamic width calculation
+    if args.logo_width is not None:
+        logo_width = args.logo_width
+    elif "width" in cfg:
+        logo_width = cfg["width"]
+    else:
+        term_width = shutil.get_terminal_size((80, 24)).columns
+        logo_width = min(40, max(20, int(term_width * 0.3)))
+
     logo_color = args.logo_color if args.logo_color is not None else cfg.get("color")
     logo_style = args.logo_style or cfg.get("style", "chars")
 

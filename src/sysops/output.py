@@ -208,12 +208,25 @@ def _render_side_by_side(data: dict[str, Any], logo: str) -> None:
 
     logo_width = max(len(_strip_ansi(line)) for line in logo_lines)
     gap = "   "
-    max_lines = max(len(logo_lines), len(info_lines))
-    for index in range(max_lines):
-        left = logo_lines[index] if index < len(logo_lines) else ""
-        right = info_lines[index] if index < len(info_lines) else ""
-        padded = left + (" " * max(0, logo_width - len(_strip_ansi(left))))
-        console.print(Text.from_ansi(padded) + Text(gap) + Text.from_markup(right))
+
+    # Dynamic Layout: Fallback to vertical if terminal is too narrow
+    term_width = console.width
+    max_info_width = max(len(_strip_ansi(line)) for line in info_lines) if info_lines else 0
+
+    if term_width < (logo_width + len(gap) + max_info_width + 4):
+        # Vertical layout
+        console.print(Text.from_ansi(logo))
+        console.print()
+        for line in info_lines:
+            console.print(Text.from_markup(line))
+    else:
+        # Side-by-side layout
+        max_lines = max(len(logo_lines), len(info_lines))
+        for index in range(max_lines):
+            left = logo_lines[index] if index < len(logo_lines) else ""
+            right = info_lines[index] if index < len(info_lines) else ""
+            padded = left + (" " * max(0, logo_width - len(_strip_ansi(left))))
+            console.print(Text.from_ansi(padded) + Text(gap) + Text.from_markup(right))
     console.print()
 
 
