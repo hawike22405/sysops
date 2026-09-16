@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from .ascii_art import UnsupportedImageError, render_ascii
@@ -284,6 +285,11 @@ def _show_report_once(args, parser):
 
 
 def main():
+    if sys.platform == "win32":
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
     parser = build_parser()
     args = parser.parse_args()
 
